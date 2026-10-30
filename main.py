@@ -4,15 +4,12 @@ import hashlib
 import subprocess
 import numpy as np
 from os import listdir
-from pathlib import Path
 from os.path import isfile, join
 from helpers.model_helper import load_config
 import onnx
-from onnx import hub
 
 from helpers.optimizer_helper import OptimizerHelper
-from helpers.model_helper import get_size, get_model_path, load_config, \
-    prepare_model_input_dimension, prepare_model_shape
+from helpers.model_orchestator import ModelOrchestrator
 
 from helpers.yolov2_extractor import YOLOV2Extractor
 from helpers.ssd_extractor import SSDExtractor
@@ -24,6 +21,7 @@ from comparators.ssd import SSDComparator
 from comparators.yolov3 import YOLOV3Comparator
 
 from runners.onnx_runner import ONNXRunner
+from runners.tvm_runner import TVMRunner
 
 def main():
 
@@ -32,6 +30,10 @@ def main():
     general_config = config["general"]
     hub_config = config["hub"]
     optimizer_config = config["optimizer"]
+    runtime_config = config.get("runtime", {})
+    backend = runtime_config.get("backend", "onnx").lower()
+    if backend not in ("onnx", "tvm"):
+        raise ValueError(f"Unsupported runtime backend: {backend}")
 
     include_certainties = general_config["include_certainties"]
     enable_kt_on_one_dim_tensor = general_config["enable_kt_on_one_dim_tensor"]
@@ -39,14 +41,11 @@ def main():
     script_dir = os.path.dirname(os.path.realpath(__file__))
     images_folder = script_dir + "/" + images_config["images_folder_rel_path"]
 
-    all_models = hub.list_models(tags=hub_config["tags"])
-
-    hub.set_dir(script_dir + "/" + hub_config["cache_folder_rel_path"])
-    
     model_comparisons_file = script_dir + "/" + general_config["report_file_base_rel_path"]
     
     onnx_runner = ONNXRunner({})
-    opt_helper = OptimizerHelper()
+    tvm_runner = TVMRunner(runtime_config) if backend == "tvm" else None
+    opt_helper = OptimizerHelper("tvmr" if backend == "tvm" else "ort")
 
     check_prob_models = general_config["check_reports_for_problematic_models"]
     model_comparisons_file_exists = os.path.exists(model_comparisons_file)
@@ -66,8 +65,15 @@ def main():
         else:
             print("Warning: check for problematic models is enabled but comparisons file does not exist. Skipping...")
  
-    skip_until = general_config["skip_until_model_id"]
-    run_up_to = general_config["run_up_to_model_id"]
+    model_orchestrator = ModelOrchestrator(
+        general_config,
+        hub_config,
+        script_dir,
+        different_models if check_prob_models and model_comparisons_file_exists else [],
+        check_prob_models,
+        model_comparisons_file_exists,
+        backend,
+    )
 
     all_images_paths = [join(images_folder, f) for f in listdir(images_folder) \
         if isfile(join(images_folder, f))]
@@ -92,99 +98,20 @@ def main():
         model_comparisons["conversion_errors"] = {}
 
         images_paths = None
-        inputs = None
 
         images_paths = [x for x in all_images_paths[starts_from:ends_at]]
         print(" ---- Input Batch: " + str(starts_from) + " to " + str(ends_at))
         model_comparisons_file = model_comparisons_file.split("_chunk")[0] + "_chunk_" + str(starts_from) + "_" + str(ends_at) + ".json"
 
-        model_no = 0
-        for model_obj in all_models:
-
-            model_no += 1
-            if (model_no < skip_until or model_no > run_up_to):
-                continue
-
-            model_name = model_obj.model
-            model_opset = model_obj.opset
-            model_name_opset = model_name + "-" + str(model_opset)
-
-            # Note: Enable to print models with opset.
-            # print(model_name_opset)
-            tags = model_obj.tags
-
-            name_filters = general_config["name_filters"]
-            is_exact_match = general_config["match_filter_exact"]
-            
-            if len(name_filters) != 0:
-                filter_in_name = False
-                for filter in name_filters:
-                    if filter in model_name_opset:
-                        print(model_name_opset)
-                    if is_exact_match and filter == model_name_opset:
-                        filter_in_name = True
-                        break
-                    elif not is_exact_match and filter in model_name_opset:
-                        filter_in_name = True
-                        break
-
-                if not filter_in_name:
-                    continue
-
-            # Check different models if option is enabled and file exists.
-            if (check_prob_models and model_comparisons_file_exists and \
-                model_name_opset not in different_models):
-                continue
-                
-            tag_found = False
-            if len(hub_config["tags_of_models_to_consider"]) != 0:
-                for tag_to_consider in hub_config["tags_of_models_to_consider"]:
-                    if tag_to_consider in tags:
-                        tag_found = True
-                        break
-
-                if not tag_found:
-                    continue
-
-            if model_opset < hub_config["opset_bottom_threshold"]:
-                continue
-
-            print("Model Number: " + str(model_no))
-            print("Model Name: " + model_name)
-            print(model_obj)
-
-            img_dimension = prepare_model_input_dimension(model_obj)
-
-            keywords = ["tf", "keras", "torch", "tflite", "densenet", \
-                "resnet", "mobilenet", "inception", "shufflenet", "googlenet", "version-rfb"]
-
-            # Check if any known library is in name.
-            # If not, PyTorch preprocessing configuration will be used.
-            contains_keyword = False
-            for keyword in keywords:
-                if keyword in model_name.lower():
-                    contains_keyword = True
-                    break
-
-            first_input = model_obj.metadata["io_ports"]["inputs"][0]
-
-            print(first_input["shape"])
-
-            model_shape = prepare_model_shape(model_obj)
-
-            model_config = {
-                "model_name": model_name + "_torch" if not contains_keyword else "",
-                "input_name": first_input["name"],
-                "input_shape": model_shape,
-                "input_dimension": img_dimension
-            }
-
-            model_path = get_model_path(script_dir, model_obj)
-
-            model = hub.load(model_name, opset=model_opset)
-
-            original_hash = hashlib.md5(open(model_path,'rb').read()).hexdigest()
-            opt_model_path = model_path.replace(".onnx", "_opt.onnx")
+        for model_data in model_orchestrator.get_models():
+            model_name = model_data["model_name"]
+            model_name_opset = model_data["model_name_opset"]
+            tags = model_data["tags"]
+            model_config = model_data["model_config"]
+            model_path = model_data["model_path"]
+            model = model_data["model"]
+            original_hash = model_data["original_hash"]
+            opt_model_path = model_data["opt_model_path"]
 
             # Load passes.
             passes = optimizer_config["passes"] if len(optimizer_config["passes"]) != 0 else \
@@ -193,10 +120,23 @@ def main():
             print("Running original model...")
             print(model_path)
             base_model_out = None
+            prepared_inputs = None
 
             try:
                 if "text" not in tags:
-                    base_model_out = onnx_runner.execute_onnx_model(model, images_paths, config=model_config, include_certainties=include_certainties)
+                    if backend == "tvm":
+                        prepared_inputs = onnx_runner.prepare_onnx_inputs(
+                            model, images_paths, model_config
+                        )
+                        base_model_out = onnx_runner.execute_onnx_model(
+                            model,
+                            images_paths,
+                            config=model_config,
+                            include_certainties=include_certainties,
+                            prepared_inputs=prepared_inputs,
+                        )
+                    else:
+                        base_model_out = onnx_runner.execute_onnx_model(model, images_paths, config=model_config, include_certainties=include_certainties)
                 else:
                     print("Text models not supported on this version.")
             except Exception as e:
@@ -216,54 +156,97 @@ def main():
 
             run_individual_passes = general_config["run_individual_passes"]
 
-            for current_pass in passes:
+            if backend == "tvm":
+                if run_individual_passes:
+                    pass_runs = [("C0", [])] + [
+                        (f"C{index + 1}_{pass_name}", passes[:index + 1])
+                        for index, pass_name in enumerate(passes)
+                    ]
+                else:
+                    pass_runs = [("all", passes)]
+            else:
+                pass_runs = [(pass_name, []) for pass_name in passes]
+
+            for current_pass, tvm_passes in pass_runs:
                 conversion_failed = False
-                try:
-                    if not run_individual_passes:
-                        p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-                        current_pass = "all"
-                    else:
-                        p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path + " -p " + current_pass], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-                    
-                    (output, err) = p.communicate()  
-                    p.wait()
-                    if p.returncode != 0:
-                        print(output)
-                        if model_name_opset not in model_comparisons["conversion_errors"]:
-                            model_comparisons["conversion_errors"][model_name_opset] = {}
-                        model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(output)
-                        model_comparisons["failed_conversions_no"] += 1
-                        conversion_failed = True
-
-                except subprocess.CalledProcessError as e:
-                    print('Fatal error: code={}, out="{}"'.format(e.returncode, e.output))
-
-                opt_hash = None
-                try:
-                    opt_hash = hashlib.md5(open(opt_model_path,'rb').read()).hexdigest()
-                except:
-                    conversion_failed = True
-                if (opt_hash is not None and original_hash == opt_hash):
-                    print(current_pass + " has no effect on model " + model_name)
-                    model_comparisons[model_name_opset]["skipped"].append(current_pass)
-                elif (not conversion_failed):
-                    print("Running optimized model. Pass: " + current_pass)
-                    print(opt_model_path)
+                should_compare = True
+                if backend == "onnx":
                     try:
-                        onnx_model = onnx.load(opt_model_path)
-                        
-                        if "text" not in tags:
-                            opt_model_out = onnx_runner.execute_onnx_model(onnx_model, images_paths, config=model_config, include_certainties=include_certainties)
+                        if not run_individual_passes:
+                            p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                            current_pass = "all"
+                        else:
+                            p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path + " -p " + current_pass], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
 
+                        (output, err) = p.communicate()
+                        p.wait()
+                        if p.returncode != 0:
+                            print(output)
+                            if model_name_opset not in model_comparisons["conversion_errors"]:
+                                model_comparisons["conversion_errors"][model_name_opset] = {}
+                            model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(output)
+                            model_comparisons["failed_conversions_no"] += 1
+                            conversion_failed = True
+                    except subprocess.CalledProcessError as e:
+                        print('Fatal error: code={}, out="{}"'.format(e.returncode, e.output))
+
+                    opt_hash = None
+                    if not conversion_failed:
+                        try:
+                            opt_hash = hashlib.md5(open(opt_model_path, 'rb').read()).hexdigest()
+                        except:
+                            conversion_failed = True
+
+                    if opt_hash is not None and original_hash == opt_hash:
+                        print(current_pass + " has no effect on model " + model_name)
+                        model_comparisons[model_name_opset]["skipped"].append(current_pass)
+                        should_compare = False
+                    elif not conversion_failed:
+                        print("Running optimized model. Pass: " + current_pass)
+                        print(opt_model_path)
+                        try:
+                            onnx_model = onnx.load(opt_model_path)
+                            if "text" not in tags:
+                                opt_model_out = onnx_runner.execute_onnx_model(onnx_model, images_paths, config=model_config, include_certainties=include_certainties)
+                        except Exception as e:
+                            if model_name_opset not in model_comparisons["conversion_errors"]:
+                                model_comparisons["conversion_errors"][model_name_opset] = {}
+                            model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(e)
+                            model_comparisons[model_name_opset]["failed"].append(current_pass)
+                            conversion_failed = True
+                else:
+                    try:
+                        if "relax_conversion_error" in model_data:
+                            raise RuntimeError(model_data["relax_conversion_error"])
+                        optimized_relax_model = opt_helper.apply_tvm_passes(
+                            model_data["relax_model"],
+                            tvm_passes,
+                            target=runtime_config.get("target", "llvm"),
+                        )
+                        print("Running Relax model configuration: " + current_pass)
+                        tvm_runner.compile_tvm_model(
+                            optimized_relax_model,
+                            target=runtime_config.get("target", "llvm"),
+                        )
+                        opt_model_out = {}
+                        for image_path in images_paths:
+                            image_name = os.path.basename(image_path)
+                            outputs = tvm_runner.execute_tvm_model(
+                                prepared_inputs[image_name]
+                            )
+                            opt_model_out[image_name] = onnx_runner.format_outputs(
+                                outputs, include_certainties
+                            )
                     except Exception as e:
                         if model_name_opset not in model_comparisons["conversion_errors"]:
                             model_comparisons["conversion_errors"][model_name_opset] = {}
                         model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(e)
                         model_comparisons[model_name_opset]["failed"].append(current_pass)
                         conversion_failed = True
+                        if "relax_conversion_error" in model_data:
+                            model_comparisons["failed_models"].append(model_name)
 
-                    if not conversion_failed:
-                        
+                if not conversion_failed and (should_compare or backend == "onnx"):
                         if ("classification" in tags):
                             evaluation = onnx_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties)
                             print(evaluation)
@@ -427,13 +410,18 @@ def main():
                             
                         model_comparisons["model_instances_run"] += 1
                         model_comparisons[model_name_opset]["run"] += 1
-                    
+                        if backend == "tvm":
+                            model_comparisons[model_name_opset][current_pass][
+                                "relax_passes"
+                            ] = tvm_passes
+
+                if backend == "tvm" or not conversion_failed:
                     json_object = json.dumps(model_comparisons, indent=2)
 
                     # TODO: Remove after debugging.
                     with open(model_comparisons_file, "w") as outfile:
                         outfile.write(json_object)
-                
+
                 if not run_individual_passes:
                     break
 
