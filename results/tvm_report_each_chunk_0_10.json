@@ -1,0 +1,52 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 1,
+  "model_instances_run": 5,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [],
+  "conversion_errors": {},
+  "MobileNet v2-7-7": {
+    "skipped": [
+      "NormalizeGlobalVar",
+      "Normalize",
+      "ConvertToDataflow",
+      "ExpandMatmulOfSum",
+      "CombineParallelMatmul",
+      "ReorderPermuteDimsAfterConcat",
+      "ReorderTakeAfterMatmul",
+      "FuseTransposeMatmul",
+      "RemoveRedundantReshape",
+      "EliminateCommonSubexpr",
+      "RemoveUnusedParameters"
+    ],
+    "failed": [],
+    "different": 0,
+    "run": 5,
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DecomposeOpsForInference": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  }
+}

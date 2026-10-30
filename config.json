@@ -1,6 +1,6 @@
 {
     "images": {
-        "images_folder_rel_path": "/images/ten",
+        "images_folder_rel_path": "/images/dataset",
         "images_chunk": 10,
         "starts_from": 0,
         "limit": 10
