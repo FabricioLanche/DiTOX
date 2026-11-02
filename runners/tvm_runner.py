@@ -1,5 +1,6 @@
 import numpy as np
 from evaluators.evalgenerator import EvaluationGenerator
+from builders.tvm_builder import TVMBuilder
 
 class TVMRunner:
     def __init__(self, config, topK=10):
@@ -35,10 +36,11 @@ class TVMRunner:
         self.tensor = tvm.runtime.tensor
 
         target = target_cls("llvm")
+        relax_pipeline = TVMBuilder.get_llvm_relax_pipeline()
         executable = tvm.compile(
             relax_model,
             target=target,
-            relax_pipeline=relax.get_default_pipeline(target),
+            relax_pipeline=relax_pipeline,
         )
         device_id = self.config.get("device_id", 0)
         device = cpu(device_id)

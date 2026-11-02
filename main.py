@@ -195,8 +195,11 @@ def main():
             opt_model_path = model_path.replace(".onnx", "_opt.onnx")
 
             # Load passes.
-            passes = optimizer_config["passes"] if len(optimizer_config["passes"]) != 0 else \
-                opt_helper.get_optimizer_passes()
+            if not optimizer_config.get("enabled", True):
+                passes = []
+            else:
+                passes = optimizer_config["passes"] if len(optimizer_config["passes"]) != 0 else \
+                    opt_helper.get_optimizer_passes()
 
             print("Running original model...")
             print(model_path)
@@ -226,6 +229,12 @@ def main():
                 "different": 0,
                 "run": 0
             }
+
+            if not passes:
+                model_comparisons[model_name_opset]["baseline_only"] = True
+                json_object = json.dumps(model_comparisons, indent=2)
+                with open(model_comparisons_file, "w") as outfile:
+                    outfile.write(json_object)
 
             run_individual_passes = general_config["run_individual_passes"]
 

@@ -24,6 +24,7 @@
         "cache_folder_rel_path": "models_cache"
     },
     "optimizer": {
+        "enabled": false,
         "passes": []
     }
 }
