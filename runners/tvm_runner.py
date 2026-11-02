@@ -21,7 +21,7 @@ class TVMRunner:
             enable_kt_on_one_dim_tensor,
         )
 
-    def compile_tvm_model(self, relax_model, target=None):
+    def compile_tvm_model(self, relax_model):
         import tvm
         from tvm import relax
 
@@ -30,41 +30,18 @@ class TVMRunner:
         self.tensor = None
         self.input_names = None
 
-        try:
-            import tvm_tirx
-        except ImportError:
-            tvm_tirx = None
+        target_cls = tvm.target.Target
+        cpu = tvm.cpu
+        self.tensor = tvm.runtime.tensor
 
-        if tvm_tirx is not None:
-            target_cls = tvm_tirx.target.Target
-            cpu = tvm_tirx.cpu
-            self.tensor = tvm_tirx.runtime.tensor
-        else:
-            target_cls = tvm.target.Target
-            cpu = tvm.cpu
-            self.tensor = tvm.runtime.tensor
-
-        if target is None:
-            target = self.config.get(
-                "target",
-                self.config.get("build", {}).get("target", "llvm"),
-            )
-        target = target_cls(target)
+        target = target_cls("llvm")
         executable = tvm.compile(
             relax_model,
             target=target,
             relax_pipeline=relax.get_default_pipeline(target),
         )
         device_id = self.config.get("device_id", 0)
-        device_type = self.config.get("device_type", target.kind.name)
-        if device_type in ("cpu", "llvm"):
-            device = cpu(device_id)
-        elif hasattr(tvm, "device"):
-            device = tvm.device(device_type, device_id)
-        else:
-            raise RuntimeError(
-                f"TVM runtime does not provide a device for target '{device_type}'."
-            )
+        device = cpu(device_id)
 
         virtual_machine = relax.VirtualMachine(executable, device)
         input_names = []

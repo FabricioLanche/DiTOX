@@ -1,4 +1,6 @@
 absl-py==2.1.0
+apache-tvm==0.27.0.post1
+apache-tvm-ffi==0.1.15.post2
 astunparse==1.6.3
 certifi==2024.12.14
 cffi==1.17.1
