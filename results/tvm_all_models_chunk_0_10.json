@@ -1,0 +1,2727 @@
+{
+  "no_dissimilar": 10,
+  "base_models_run": 12,
+  "model_instances_run": 289,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [
+    "AlexNet-int8",
+    "CaffeNet-int8"
+  ],
+  "conversion_errors": {},
+  "manifest_models_expected": 130,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [
+    "MobileNet v2-7-7",
+    "BERT-Squad-8",
+    "BERT-Squad-10",
+    "BERT-Squad-12",
+    "BERT-Squad-int8-12",
+    "GPT-2-LM-HEAD-10",
+    "RoBERTa-SequenceClassification-9",
+    "T5-encoder-12"
+  ],
+  "manifest_models_selected_by_config": 122,
+  "AlexNet-7": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "AlexNet-8": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "AlexNet-9": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "AlexNet-12": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "AlexNet-qdq-12": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "60.0",
+      "topK": "90.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "CaffeNet-7": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "CaffeNet-8": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "CaffeNet-9": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "CaffeNet-12": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "10.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "CaffeNet-qdq-12": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 1,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "10.0",
+      "top5": "60.0",
+      "topK": "90.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "DenseNet-121-7": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": [],
+      "RewriteDataflowReshape": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "TopologicalSort": [],
+      "RemoveUnusedOutputs": [],
+      "RemoveUnusedParameters": [],
+      "DeadCodeElimination": [],
+      "LazyTransformParams": [],
+      "StaticPlanBlockMemory": [],
+      "KillAfterLastUse": []
+    },
+    "dependency_failures": {},
+    "different": 0,
+    "run": 25,
+    "ToMixedPrecision": {
+      "first": "100.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "100.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RewriteDataflowReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "TopologicalSort": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedOutputs": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveUnusedParameters": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DeadCodeElimination": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "LazyTransformParams": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "StaticPlanBlockMemory": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "KillAfterLastUse": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  },
+  "DenseNet-121-8": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {
+      "ToMixedPrecision": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "AdjustMatmulOrder": [],
+      "CanonicalizeBindings": [],
+      "FoldBatchnormToConv2D": [],
+      "FastMathTransform": [],
+      "EliminateCommonSubexpr": [],
+      "FuseTransposeMatmul": [],
+      "InlinePrivateFunctions": [],
+      "CombineParallelMatmul": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderPermuteDimsAfterConcat": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "ExpandMatmulOfSum",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "CombineParallelMatmul",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "ReorderTakeAfterMatmul": [],
+      "RemoveRedundantReshape": [],
+      "FoldConstant": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseOps": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ]
+    },
+    "dependency_failures": {},
+    "different": 0,
+    "run": 14,
+    "ToMixedPrecision": {
+      "first": "100.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "AdjustMatmulOrder": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CanonicalizeBindings": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldBatchnormToConv2D": {
+      "first": "100.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FastMathTransform": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "EliminateCommonSubexpr": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTransposeMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "InlinePrivateFunctions": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "CombineParallelMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "ReorderTakeAfterMatmul": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "RemoveRedundantReshape": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FoldConstant": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  }
+}

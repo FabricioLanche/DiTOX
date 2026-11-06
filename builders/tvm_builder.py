@@ -2,41 +2,31 @@ from tvm.relax.frontend.onnx import from_onnx
 
 class TVMBuilder:
 
-    LLVM_RELAX_PIPELINE = [
-        "DispatchSampling",
-        "DispatchSortScan",
-        "LegalizeOps",
-        "ToNonDataflow",
-        "RemovePurityChecking",
-        "CallTIRRewrite",
-        "LowerAllocTensor",
-        "LowerRuntimeBuiltin",
-        "ComputePrimValue",
-        "VMShapeLower",
-        "AttachGlobalSymbol",
-    ]
-
     @staticmethod
-    def get_llvm_relax_pipeline():
+    def get_default_relax_pipeline():
         import tvm
         from tvm import relax
 
-        pipeline_passes = []
-        unavailable_passes = []
-        for pass_name in TVMBuilder.LLVM_RELAX_PIPELINE:
-            pass_factory = getattr(relax.transform, pass_name, None)
-            if pass_factory is None:
-                unavailable_passes.append(pass_name)
-                continue
-            pipeline_passes.append(pass_factory())
+        return tvm.transform.Sequential([
+            relax.backend.DispatchSampling(),
+            relax.backend.DispatchSortScan(),
+            relax.transform.LegalizeOps(),
+            relax.transform.ToNonDataflow(),
+            relax.transform.RemovePurityChecking(),
+            relax.transform.CallTIRRewrite(),
+            relax.transform.LowerAllocTensor(),
+            relax.transform.LowerRuntimeBuiltin(),
+            relax.transform.ComputePrimValue(),
+            relax.transform.VMShapeLower(),
+            relax.transform.AttachGlobalSymbol(),
+        ])
 
-        if unavailable_passes:
-            print(
-                "TVM pipeline passes unavailable in this installed version "
-                f"(skipped): {', '.join(unavailable_passes)}"
-            )
+    @staticmethod
+    def get_optimized_relax_pipeline():
+        from helpers.optimizer_helper import OptimizerHelper
 
-        return tvm.transform.Sequential(pipeline_passes)
+        helper = OptimizerHelper(target="tvm")
+        return helper.get_tvm_relax_pipeline()
     
     def build_relax(self, onnx_model, shape_dict=None, dtype_dict=None):
         return from_onnx(

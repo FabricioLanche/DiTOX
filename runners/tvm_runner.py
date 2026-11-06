@@ -22,7 +22,7 @@ class TVMRunner:
             enable_kt_on_one_dim_tensor,
         )
 
-    def compile_tvm_model(self, relax_model):
+    def compile_tvm_model(self, relax_model, optimized=False, relax_pipeline=None):
         import tvm
         from tvm import relax
 
@@ -36,7 +36,12 @@ class TVMRunner:
         self.tensor = tvm.runtime.tensor
 
         target = target_cls("llvm")
-        relax_pipeline = TVMBuilder.get_llvm_relax_pipeline()
+        if relax_pipeline is None:
+            relax_pipeline = (
+                TVMBuilder.get_default_relax_pipeline()
+                if not optimized
+                else TVMBuilder.get_optimized_relax_pipeline()
+            )
         executable = tvm.compile(
             relax_model,
             target=target,
@@ -57,7 +62,6 @@ class TVMRunner:
         self.virtual_machine = virtual_machine
         self.device = device
         self.input_names = input_names
-        return virtual_machine
 
     def execute_tvm_model(self, inputs):
         if self.virtual_machine is None:
@@ -97,25 +101,27 @@ class TVMRunner:
             for output in output_values
         ]
 
-    def execute_single(self, inputs):
-        return self.execute_tvm_model(inputs)
-
-    def execute_relax_model(self, relax_model, images_paths, config, print_percentage=True, include_certainties=False):
+    def execute_relax_model(self, relax_model, images_paths, config, print_percentage=True,
+                            include_certainties=False, optimized=False,
+                            relax_pipeline=None):
         from pathlib import Path
         from PIL import Image
         from scipy.special import softmax
         from processors.model_preprocessor import ModelPreprocessor
 
-        self.compile_tvm_model(relax_model)
+        self.compile_tvm_model(
+            relax_model,
+            optimized=optimized,
+            relax_pipeline=relax_pipeline,
+        )
 
-        has_symbolic_input = False
         input_dimension = config.get("input_dimension", [224, 224])
         if len(input_dimension) == 0:
             input_dimension = [224, 224]
-            has_symbolic_input = True
+        input_shape = config.get("input_shape", [1, 3, 224, 224])
 
         preprocessing_data = {
-            "input": config.get("input_shape", [1, 3, 224, 224]),
+            "input": input_shape,
             "input_dimension": input_dimension,
             "library": None
         }
@@ -136,7 +142,6 @@ class TVMRunner:
             img_name = Path(img_path).name
             img = Image.open(img_path)
 
-            input_shape = config.get("input_shape", [1, 3, 224, 224])
             if len(input_shape) > 3 and (input_shape[1] == 1 or input_shape[3] == 1):
                 img = img.convert("L")
             else:

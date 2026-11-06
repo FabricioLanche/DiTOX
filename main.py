@@ -28,6 +28,12 @@ from runners.onnx_runner import ONNXRunner
 from runners.tvm_runner import TVMRunner
 from builders.tvm_builder import TVMBuilder
 
+
+def _has_dissimilarity(evaluation):
+    values = np.asarray(evaluation.get("percentage_dissimilar", []), dtype=float)
+    return bool(np.any(values[np.isfinite(values)] > 0))
+
+
 def main():
 
     config_path = sys.argv[1] if len(sys.argv) > 1 else './config.json'
@@ -44,7 +50,49 @@ def main():
     script_dir = os.path.dirname(os.path.realpath(__file__))
     images_folder = script_dir + "/" + images_config["images_folder_rel_path"]
 
-    all_models = hub.list_models(tags=hub_config["tags"])
+    manifest_path = hub_config.get("model_manifest_rel_path")
+    manifest_categories = None
+    manifest_missing_models = []
+    manifest_excluded_by_config = []
+    if manifest_path:
+        manifest_file = Path(script_dir) / manifest_path.lstrip("/\\")
+        with open(manifest_file, "r", encoding="utf-8") as manifest_stream:
+            manifest = json.load(manifest_stream)
+        manifest_categories = {
+            (item["model"], int(item["opset"])): item["category"]
+            for item in manifest["models"]
+        }
+        included_categories = set(hub_config["tags_of_models_to_consider"])
+        excluded_names = set(general_config.get("exclude_name_filters", []))
+        manifest_excluded_by_config = [
+            f"{model_name}-{opset}"
+            for (model_name, opset), category in manifest_categories.items()
+            if category not in included_categories
+            or f"{model_name}-{opset}" in excluded_names
+            or opset < hub_config["opset_bottom_threshold"]
+        ]
+        catalog = hub.list_models()
+        catalog_by_id = {
+            (item.model, int(item.opset)): item
+            for item in catalog
+        }
+        all_models = [
+            catalog_by_id[model_id]
+            for model_id in manifest_categories
+            if model_id in catalog_by_id
+        ]
+        manifest_missing_models = [
+            f"{model_name}-{opset}"
+            for model_name, opset in manifest_categories
+            if (model_name, opset) not in catalog_by_id
+        ]
+        if manifest_missing_models:
+            print(
+                "Manifest models absent from current ONNX Hub catalog: "
+                + ", ".join(manifest_missing_models)
+            )
+    else:
+        all_models = hub.list_models(tags=hub_config["tags"])
 
     hub.set_dir(script_dir + "/" + hub_config["cache_folder_rel_path"])
     
@@ -54,7 +102,8 @@ def main():
     onnx_runner = ONNXRunner({})
     tvm_runner = TVMRunner(config.get("tvm", {})) if backend == "tvmr" else None
     tvm_builder = TVMBuilder() if backend == "tvmr" else None
-    opt_helper = OptimizerHelper(optimizer=backend)
+    optimization_target = "tvm" if backend == "tvmr" else "onnx"
+    opt_helper = OptimizerHelper(target=optimization_target)
 
     check_prob_models = general_config["check_reports_for_problematic_models"]
     model_comparisons_file_exists = os.path.exists(model_comparisons_file)
@@ -98,6 +147,17 @@ def main():
         model_comparisons["skipped_models"] = []
         model_comparisons["failed_models"] = []
         model_comparisons["conversion_errors"] = {}
+        if manifest_categories is not None:
+            model_comparisons["manifest_models_expected"] = len(manifest_categories)
+            model_comparisons["manifest_models_not_found"] = manifest_missing_models
+            model_comparisons["manifest_models_excluded_by_config"] = (
+                manifest_excluded_by_config
+            )
+            model_comparisons["manifest_models_selected_by_config"] = (
+                len(manifest_categories)
+                - len(manifest_missing_models)
+                - len(manifest_excluded_by_config)
+            )
 
         images_paths = None
         inputs = None
@@ -117,9 +177,20 @@ def main():
             model_opset = model_obj.opset
             model_name_opset = model_name + "-" + str(model_opset)
 
+            excluded_models = general_config.get("exclude_name_filters", [])
+            if model_name_opset in excluded_models:
+                continue
+
             # Note: Enable to print models with opset.
             # print(model_name_opset)
-            tags = model_obj.tags
+            manifest_category = None
+            if manifest_categories is not None:
+                manifest_category = manifest_categories[(model_name, int(model_opset))]
+                tags = [manifest_category]
+                if manifest_category != "text":
+                    tags.append("vision")
+            else:
+                tags = model_obj.tags
 
             name_filters = general_config["name_filters"]
             is_exact_match = general_config["match_filter_exact"]
@@ -226,6 +297,9 @@ def main():
             model_comparisons[model_name_opset] = {
                 "skipped": [],
                 "failed": [],
+                "blocked": [],
+                "dependency_checks": {},
+                "dependency_failures": {},
                 "different": 0,
                 "run": 0
             }
@@ -237,34 +311,138 @@ def main():
                     outfile.write(json_object)
 
             run_individual_passes = general_config["run_individual_passes"]
+            if backend == "tvmr":
+                passes_to_run = (
+                    passes if run_individual_passes else (["all"] if passes else [])
+                )
+            else:
+                passes_to_run = passes if run_individual_passes else ["all"]
 
-            for current_pass in passes:
+            for current_pass in passes_to_run:
                 conversion_failed = False
                 opt_model_out = None
 
                 if backend == "tvmr":
-                    # --- TVM Relax branch ---
                     try:
-                        if not run_individual_passes:
-                            opt_relax_mod = tvm_builder.optimize_relax(base_relax_mod, "all", passes)
-                            current_pass = "all"
-                        else:
-                            opt_relax_mod = tvm_builder.optimize_relax(base_relax_mod, current_pass)
-
-                        if str(opt_relax_mod) == str(base_relax_mod):
-                            print(current_pass + " has no effect on model " + model_name)
-                            model_comparisons[model_name_opset]["skipped"].append(current_pass)
-                        else:
-                            print("Running optimized TVM model. Pass: " + current_pass)
+                        if current_pass == "all":
+                            print("Running optimized TVM model. Pass: all")
                             opt_model_out = tvm_runner.execute_relax_model(
-                                opt_relax_mod, images_paths, config=model_config, include_certainties=include_certainties
+                                base_relax_mod,
+                                images_paths,
+                                config=model_config,
+                                include_certainties=include_certainties,
+                                optimized=True,
                             )
+                        else:
+                            required_dependencies = opt_helper.get_tvm_isolation_dependencies(
+                                current_pass
+                            )
+                            included_dependencies = []
+                            dependency_failure = None
+                            dependency_checks = []
+
+                            for dependency in required_dependencies:
+                                included_dependencies.append(dependency)
+                                dependency_mod = tvm_builder.build_relax(
+                                    model,
+                                    {first_input["name"]: model_shape},
+                                )
+                                dependency_pipeline = opt_helper.get_tvm_isolation_pipeline(
+                                    current_pass,
+                                    dependencies=included_dependencies,
+                                    include_optimization=False,
+                                )
+                                try:
+                                    dependency_out = tvm_runner.execute_relax_model(
+                                        dependency_mod,
+                                        images_paths,
+                                        config=model_config,
+                                        include_certainties=include_certainties,
+                                        relax_pipeline=dependency_pipeline,
+                                    )
+                                except Exception as error:
+                                    dependency_failure = {
+                                        "pass": dependency,
+                                        "error": repr(error),
+                                    }
+                                    dependency_checks.append(
+                                        {
+                                            "pass": dependency,
+                                            "status": "failed",
+                                            "error": repr(error),
+                                        }
+                                    )
+                                    break
+
+                                dependency_evaluation = tvm_runner.evaluate(
+                                    base_model_out,
+                                    dependency_out,
+                                    type=tags,
+                                    include_certainties=include_certainties,
+                                    enable_kt_on_one_dim_tensor=enable_kt_on_one_dim_tensor,
+                                )
+                                dependency_different = _has_dissimilarity(
+                                    dependency_evaluation
+                                )
+                                dependency_checks.append(
+                                    {
+                                        "pass": dependency,
+                                        "status": (
+                                            "different"
+                                            if dependency_different
+                                            else "passed"
+                                        ),
+                                        "percentage_dissimilar": dependency_evaluation.get(
+                                            "percentage_dissimilar"
+                                        ),
+                                    }
+                                )
+                                if dependency_different:
+                                    dependency_failure = {
+                                        "pass": dependency,
+                                        "reason": "dependency output differs from default TVM output",
+                                    }
+                                    break
+
+                            model_comparisons[model_name_opset]["dependency_checks"][
+                                current_pass
+                            ] = dependency_checks
+
+                            if dependency_failure is not None:
+                                model_comparisons[model_name_opset]["dependency_failures"][
+                                    current_pass
+                                ] = dependency_failure
+                                model_comparisons[model_name_opset]["blocked"].append(
+                                    current_pass
+                                )
+                                conversion_failed = True
+                            else:
+                                print(
+                                    f"Running isolated TVM optimization: {current_pass}"
+                                )
+                                candidate_mod = tvm_builder.build_relax(
+                                    model,
+                                    {first_input["name"]: model_shape},
+                                )
+                                candidate_pipeline = opt_helper.get_tvm_isolation_pipeline(
+                                    current_pass,
+                                    dependencies=required_dependencies,
+                                    include_optimization=True,
+                                )
+                                opt_model_out = tvm_runner.execute_relax_model(
+                                    candidate_mod,
+                                    images_paths,
+                                    config=model_config,
+                                    include_certainties=include_certainties,
+                                    relax_pipeline=candidate_pipeline,
+                                )
                     except Exception as e:
                         print(f"TVM Relax pass {current_pass} error: {e}")
-                        if model_name_opset not in model_comparisons["conversion_errors"]:
-                            model_comparisons["conversion_errors"][model_name_opset] = {}
-                        model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(e)
-                        model_comparisons[model_name_opset]["failed"].append(current_pass)
+                        if current_pass not in model_comparisons[model_name_opset]["blocked"]:
+                            if model_name_opset not in model_comparisons["conversion_errors"]:
+                                model_comparisons["conversion_errors"][model_name_opset] = {}
+                            model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(e)
+                            model_comparisons[model_name_opset]["failed"].append(current_pass)
                         conversion_failed = True
                 else:
                     # --- ORT branch ---
@@ -481,9 +659,9 @@ def main():
                 
                     json_object = json.dumps(model_comparisons, indent=2)
 
-                    # TODO: Remove after debugging.
-                    with open(model_comparisons_file, "w") as outfile:
-                        outfile.write(json_object)
+                json_object = json.dumps(model_comparisons, indent=2)
+                with open(model_comparisons_file, "w") as outfile:
+                    outfile.write(json_object)
                 
                 if not run_individual_passes:
                     break
