@@ -1,7 +1,7 @@
 {
   "no_dissimilar": 10,
   "base_models_run": 12,
-  "model_instances_run": 289,
+  "model_instances_run": 292,
   "failed_conversions_no": 0,
   "skipped_models": [],
   "failed_models": [
@@ -2648,11 +2648,36 @@
           "status": "passed",
           "percentage_dissimilar": 0.0
         }
-      ]
+      ],
+      "DataflowUseInplaceCalls": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "FuseTIR": [
+        {
+          "pass": "ConvertToDataflow",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "AnnotateTIROpPattern",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        },
+        {
+          "pass": "FuseOps",
+          "status": "passed",
+          "percentage_dissimilar": 0.0
+        }
+      ],
+      "SpecializePrimFuncBasedOnCallSite": []
     },
     "dependency_failures": {},
     "different": 0,
-    "run": 14,
+    "run": 17,
     "ToMixedPrecision": {
       "first": "100.0",
       "top5": "0.0",
@@ -2719,6 +2744,21 @@
       "topK": "0.0"
     },
     "FuseOps": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "DataflowUseInplaceCalls": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "FuseTIR": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
       "first": "0.0",
       "top5": "0.0",
       "topK": "0.0"

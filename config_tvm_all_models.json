@@ -19,11 +19,11 @@
         "backend": "tvmr"
     },
     "hub": {
-        "tags": ["vision"],
+        "tags": ["vision", "text"],
         "tags_of_models_to_consider": ["classification", "object detection segmentation"],
         "opset_bottom_threshold": 7,
         "cache_folder_rel_path": "models_cache",
-        "model_manifest_rel_path": "models_manifest.json"
+        "model_manifest_rel_path": "ditox_paper_models_manifest.json"
     },
     "optimizer": {
         "enabled": true,
