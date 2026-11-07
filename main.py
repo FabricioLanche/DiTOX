@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import hashlib
 import subprocess
@@ -24,10 +25,48 @@ from comparators.ssd import SSDComparator
 from comparators.yolov3 import YOLOV3Comparator
 
 from runners.onnx_runner import ONNXRunner
+from runners.tvm_runner import TVMRunner
+from builders.tvm_builder import TVMBuilder
+
+
+def _has_dissimilarity(evaluation):
+    values = np.asarray(evaluation.get("percentage_dissimilar", []), dtype=float)
+    return bool(np.any(values[np.isfinite(values)] > 0))
+
+
+def _report_chunk_path(script_dir, report_rel_path, starts_from, ends_at):
+    report_path = Path(script_dir) / report_rel_path.lstrip("/\\")
+    report_stem = report_path.stem.split("_chunk", 1)[0]
+    return report_path.with_name(
+        f"{report_stem}_chunk_{starts_from}_{ends_at}{report_path.suffix}"
+    )
+
+
+def _problematic_models_from_report(report_path):
+    with open(report_path, "r", encoding="utf-8") as report_file:
+        report = json.load(report_file)
+
+    return (
+        set(report.get("failed_models", []))
+        | {
+            model
+            for model, error in report.get("conversion_errors", {}).items()
+            if error
+        }
+        | {
+            model
+            for model, result in report.items()
+            if isinstance(result, dict)
+            and any(result.get(key) for key in ("different", "failed", "blocked"))
+        }
+    )
+
 
 def main():
 
-    config = load_config('./config.json')
+    config_path = sys.argv[1] if len(sys.argv) > 1 else './config.json'
+    with open(config_path, "r") as f:
+        config = json.load(f)
     images_config = config["images"]
     general_config = config["general"]
     hub_config = config["hub"]
@@ -39,32 +78,62 @@ def main():
     script_dir = os.path.dirname(os.path.realpath(__file__))
     images_folder = script_dir + "/" + images_config["images_folder_rel_path"]
 
-    all_models = hub.list_models(tags=hub_config["tags"])
+    manifest_path = hub_config.get("model_manifest_rel_path")
+    manifest_categories = None
+    manifest_missing_models = []
+    manifest_excluded_by_config = []
+    if manifest_path:
+        manifest_file = Path(script_dir) / manifest_path.lstrip("/\\")
+        with open(manifest_file, "r", encoding="utf-8") as manifest_stream:
+            manifest = json.load(manifest_stream)
+        manifest_categories = {
+            (item["model"], int(item["opset"])): item["category"]
+            for item in manifest["models"]
+        }
+        included_categories = set(hub_config["tags_of_models_to_consider"])
+        excluded_names = set(general_config.get("exclude_name_filters", []))
+        manifest_excluded_by_config = [
+            f"{model_name}-{opset}"
+            for (model_name, opset), category in manifest_categories.items()
+            if category not in included_categories
+            or f"{model_name}-{opset}" in excluded_names
+            or opset < hub_config["opset_bottom_threshold"]
+        ]
+        catalog = hub.list_models()
+        catalog_by_id = {
+            (item.model, int(item.opset)): item
+            for item in catalog
+        }
+        all_models = [
+            catalog_by_id[model_id]
+            for model_id in manifest_categories
+            if model_id in catalog_by_id
+        ]
+        manifest_missing_models = [
+            f"{model_name}-{opset}"
+            for model_name, opset in manifest_categories
+            if (model_name, opset) not in catalog_by_id
+        ]
+        if manifest_missing_models:
+            print(
+                "Manifest models absent from current ONNX Hub catalog: "
+                + ", ".join(manifest_missing_models)
+            )
+    else:
+        all_models = hub.list_models(tags=hub_config["tags"])
 
     hub.set_dir(script_dir + "/" + hub_config["cache_folder_rel_path"])
     
-    model_comparisons_file = script_dir + "/" + general_config["report_file_base_rel_path"]
+    report_file_base_rel_path = general_config["report_file_base_rel_path"]
     
+    backend = general_config.get("backend", "ort")
     onnx_runner = ONNXRunner({})
-    opt_helper = OptimizerHelper()
+    tvm_runner = TVMRunner(config.get("tvm", {})) if backend == "tvmr" else None
+    tvm_builder = TVMBuilder() if backend == "tvmr" else None
+    optimization_target = "tvm" if backend == "tvmr" else "onnx"
+    opt_helper = OptimizerHelper(target=optimization_target)
 
     check_prob_models = general_config["check_reports_for_problematic_models"]
-    model_comparisons_file_exists = os.path.exists(model_comparisons_file)
-    if check_prob_models:
-        if model_comparisons_file_exists:
-            # Use model comparisons file to compare problematic models.
-            f = open(model_comparisons_file, "r")
-            base_object = json.load(f)
-
-            different_models = []
-                
-            for key in base_object:
-                elem = base_object[key]
-                if isinstance(elem, dict) and "different" in elem and elem["different"] != 0:
-                    different_models.append(key)
-            print(different_models)
-        else:
-            print("Warning: check for problematic models is enabled but comparisons file does not exist. Skipping...")
  
     skip_until = general_config["skip_until_model_id"]
     run_up_to = general_config["run_up_to_model_id"]
@@ -90,13 +159,37 @@ def main():
         model_comparisons["skipped_models"] = []
         model_comparisons["failed_models"] = []
         model_comparisons["conversion_errors"] = {}
+        if manifest_categories is not None:
+            model_comparisons["manifest_models_expected"] = len(manifest_categories)
+            model_comparisons["manifest_models_not_found"] = manifest_missing_models
+            model_comparisons["manifest_models_excluded_by_config"] = (
+                manifest_excluded_by_config
+            )
+            model_comparisons["manifest_models_selected_by_config"] = (
+                len(manifest_categories)
+                - len(manifest_missing_models)
+                - len(manifest_excluded_by_config)
+            )
 
         images_paths = None
         inputs = None
 
         images_paths = [x for x in all_images_paths[starts_from:ends_at]]
         print(" ---- Input Batch: " + str(starts_from) + " to " + str(ends_at))
-        model_comparisons_file = model_comparisons_file.split("_chunk")[0] + "_chunk_" + str(starts_from) + "_" + str(ends_at) + ".json"
+        model_comparisons_file = _report_chunk_path(
+            script_dir, report_file_base_rel_path, starts_from, ends_at
+        )
+
+        problematic_models = None
+        if check_prob_models:
+            problematic_models = _problematic_models_from_report(model_comparisons_file)
+            print(
+                f"Isolating passes for {len(problematic_models)} problematic models "
+                f"from {model_comparisons_file.name}"
+            )
+
+        # Ensure even empty isolation chunks get a completion report.
+        json_object = json.dumps(model_comparisons, indent=2)
 
         model_no = 0
         for model_obj in all_models:
@@ -109,9 +202,23 @@ def main():
             model_opset = model_obj.opset
             model_name_opset = model_name + "-" + str(model_opset)
 
+            if check_prob_models and model_name_opset not in problematic_models:
+                continue
+
+            excluded_models = general_config.get("exclude_name_filters", [])
+            if model_name_opset in excluded_models:
+                continue
+
             # Note: Enable to print models with opset.
             # print(model_name_opset)
-            tags = model_obj.tags
+            manifest_category = None
+            if manifest_categories is not None:
+                manifest_category = manifest_categories[(model_name, int(model_opset))]
+                tags = [manifest_category]
+                if manifest_category != "text":
+                    tags.append("vision")
+            else:
+                tags = model_obj.tags
 
             name_filters = general_config["name_filters"]
             is_exact_match = general_config["match_filter_exact"]
@@ -131,11 +238,6 @@ def main():
                 if not filter_in_name:
                     continue
 
-            # Check different models if option is enabled and file exists.
-            if (check_prob_models and model_comparisons_file_exists and \
-                model_name_opset not in different_models):
-                continue
-                
             tag_found = False
             if len(hub_config["tags_of_models_to_consider"]) != 0:
                 for tag_to_consider in hub_config["tags_of_models_to_consider"]:
@@ -187,22 +289,36 @@ def main():
             opt_model_path = model_path.replace(".onnx", "_opt.onnx")
 
             # Load passes.
-            passes = optimizer_config["passes"] if len(optimizer_config["passes"]) != 0 else \
-                opt_helper.get_optimizer_passes()
+            if not optimizer_config.get("enabled", True):
+                passes = []
+            else:
+                passes = optimizer_config["passes"] if len(optimizer_config["passes"]) != 0 else \
+                    opt_helper.get_optimizer_passes()
 
             print("Running original model...")
             print(model_path)
             base_model_out = None
+            base_relax_mod = None
 
             try:
                 if "text" not in tags:
-                    base_model_out = onnx_runner.execute_onnx_model(model, images_paths, config=model_config, include_certainties=include_certainties)
+                    if backend == "tvmr":
+                        base_relax_mod = tvm_builder.build_relax(model, {first_input["name"]: model_shape})
+                        base_model_out = tvm_runner.execute_relax_model(base_relax_mod, images_paths, config=model_config, include_certainties=include_certainties)
+                    else:
+                        base_model_out = onnx_runner.execute_onnx_model(model, images_paths, config=model_config, include_certainties=include_certainties)
                 else:
                     print("Text models not supported on this version.")
             except Exception as e:
                 print(e)
                 print(model_name + " - a base model error occured!")
-                model_comparisons["failed_models"].append(model_name)
+                model_comparisons["failed_models"].append(model_name_opset)
+                model_comparisons["conversion_errors"][model_name_opset] = {
+                    "baseline": repr(e)
+                }
+                json_object = json.dumps(model_comparisons, indent=2)
+                with open(model_comparisons_file, "w") as outfile:
+                    outfile.write(json_object)
                 continue
 
             model_comparisons["base_models_run"] += 1
@@ -210,229 +326,372 @@ def main():
             model_comparisons[model_name_opset] = {
                 "skipped": [],
                 "failed": [],
+                "blocked": [],
+                "dependency_checks": {},
+                "dependency_failures": {},
                 "different": 0,
                 "run": 0
             }
 
+            if not passes:
+                model_comparisons[model_name_opset]["baseline_only"] = True
+                json_object = json.dumps(model_comparisons, indent=2)
+                with open(model_comparisons_file, "w") as outfile:
+                    outfile.write(json_object)
+
             run_individual_passes = general_config["run_individual_passes"]
+            if backend == "tvmr":
+                passes_to_run = (
+                    passes if run_individual_passes else (["all"] if passes else [])
+                )
+            else:
+                passes_to_run = passes if run_individual_passes else ["all"]
 
-            for current_pass in passes:
+            for current_pass in passes_to_run:
                 conversion_failed = False
-                try:
-                    if not run_individual_passes:
-                        p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-                        current_pass = "all"
-                    else:
-                        p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path + " -p " + current_pass], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-                    
-                    (output, err) = p.communicate()  
-                    p.wait()
-                    if p.returncode != 0:
-                        print(output)
-                        if model_name_opset not in model_comparisons["conversion_errors"]:
-                            model_comparisons["conversion_errors"][model_name_opset] = {}
-                        model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(output)
-                        model_comparisons["failed_conversions_no"] += 1
-                        conversion_failed = True
+                opt_model_out = None
 
-                except subprocess.CalledProcessError as e:
-                    print('Fatal error: code={}, out="{}"'.format(e.returncode, e.output))
-
-                opt_hash = None
-                try:
-                    opt_hash = hashlib.md5(open(opt_model_path,'rb').read()).hexdigest()
-                except:
-                    conversion_failed = True
-                if (opt_hash is not None and original_hash == opt_hash):
-                    print(current_pass + " has no effect on model " + model_name)
-                    model_comparisons[model_name_opset]["skipped"].append(current_pass)
-                elif (not conversion_failed):
-                    print("Running optimized model. Pass: " + current_pass)
-                    print(opt_model_path)
+                if backend == "tvmr":
                     try:
-                        onnx_model = onnx.load(opt_model_path)
-                        
-                        if "text" not in tags:
-                            opt_model_out = onnx_runner.execute_onnx_model(onnx_model, images_paths, config=model_config, include_certainties=include_certainties)
-
-                    except Exception as e:
-                        if model_name_opset not in model_comparisons["conversion_errors"]:
-                            model_comparisons["conversion_errors"][model_name_opset] = {}
-                        model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(e)
-                        model_comparisons[model_name_opset]["failed"].append(current_pass)
-                        conversion_failed = True
-
-                    if not conversion_failed:
-                        
-                        if ("classification" in tags):
-                            evaluation = onnx_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties)
-                            print(evaluation)
-                            comparator = ClassificationComparator(evaluation, model_comparisons)
-                            comparator.update(model_name_opset, current_pass, include_certainties=include_certainties)
-
-                        elif ("object detection segmentation" in tags and "RetinaNet" not in model_name_opset):
-                            model_comparisons[model_name_opset][current_pass] = {}
-                            evaluation = onnx_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties, enable_kt_on_one_dim_tensor=enable_kt_on_one_dim_tensor)
-                            print(evaluation)
-                            if "YOLOv3" in model_name_opset:
-                                comparator = YOLOV3Comparator(evaluation, model_comparisons)
-                                comparator.update(model_name_opset, model, base_model_out, opt_model_out, current_pass)
-
-                            elif "YOLOv2-9" in model_name_opset:
-                                extractor = YOLOV2Extractor()
-
-                                metrics_5 = []
-                                metrics_7 = []
-                                metrics_9 = []
-                                evaluator_5 = ObjectDetectionEvaluator(iou_threshold=0.5)
-                                evaluator_7 = ObjectDetectionEvaluator(iou_threshold=0.75)
-                                evaluator_9 = ObjectDetectionEvaluator(iou_threshold=0.9)
-
-                                output = [node.name for node in model.graph.output]
-
-                                for img_key in base_model_out.keys():
-                                    base_image = base_model_out[img_key]
-                                    opt_image = opt_model_out[img_key]
-                                    base_data = extractor.extract_yolo_outputs(base_image)
-                                    base_bboxes = base_data[0]
-                                    base_labels = base_data[1]
-                                    base_scores = base_data[2]
-
-                                    opt_data = extractor.extract_yolo_outputs(opt_image)
-                                    opt_bboxes = opt_data[0]
-                                    opt_labels = opt_data[1]
-                                    opt_scores = opt_data[2]
-
-                                    # Skip undetected classes.
-                                    if (base_labels == [] and opt_labels == []) or (base_bboxes == [] and opt_bboxes == []):
-                                        continue
-
-                                    metric_5 = evaluator_5.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
-                                    metrics_5.append(metric_5)
-
-                                    metric_7 = evaluator_7.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
-                                    metrics_7.append(metric_7)
-
-                                    metric_9 = evaluator_9.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
-                                    metrics_9.append(metric_9)
-
-                                model_comparisons[model_name_opset][current_pass][output[0]] = {
-                                    "metrics_0_5": {
-                                        "avg_f1": np.mean([o["F1"] for o in metrics_5]) * 100,
-                                        "avg_prec": np.mean([o["precision"] for o in metrics_5]) * 100,
-                                        "avg_recall": np.mean([o["recall"] for o in metrics_5]) * 100,
-                                        "avg_mAP": np.mean([o["mAP"] for o in metrics_5]) * 100,
-                                        "avg_IoU": np.mean([o["IoU"] for o in metrics_5]) * 100,
-                                    },
-                                    "metrics_0_7": {
-                                        "avg_f1": np.mean([o["F1"] for o in metrics_7]) * 100,
-                                        "avg_prec": np.mean([o["precision"] for o in metrics_7]) * 100,
-                                        "avg_recall": np.mean([o["recall"] for o in metrics_7]) * 100,
-                                        "avg_mAP": np.mean([o["mAP"] for o in metrics_7]) * 100,
-                                        "avg_IoU": np.mean([o["IoU"] for o in metrics_7]) * 100,
-                                    },
-                                    "metrics_0_9": {
-                                        "avg_f1": np.mean([o["F1"] for o in metrics_9]) * 100,
-                                        "avg_prec": np.mean([o["precision"] for o in metrics_9]) * 100,
-                                        "avg_recall": np.mean([o["recall"] for o in metrics_9]) * 100,
-                                        "avg_mAP": np.mean([o["mAP"] for o in metrics_9]) * 100,
-                                        "avg_IoU": np.mean([o["IoU"] for o in metrics_9]) * 100,
-                                    }
-                                }
-
-                            elif "SSD" in model_name_opset:
-                                extractor = SSDExtractor()
-
-                                metrics_5 = []
-                                metrics_7 = []
-                                metrics_9 = []
-                                evaluator_5 = ObjectDetectionEvaluator(iou_threshold=0.5)
-                                evaluator_7 = ObjectDetectionEvaluator(iou_threshold=0.75)
-                                evaluator_9 = ObjectDetectionEvaluator(iou_threshold=0.9)
-
-                                output = [node.name for node in model.graph.output]
-
-                                for img_key in base_model_out.keys():
-                                    base_image = base_model_out[img_key]
-                                    opt_image = opt_model_out[img_key]
-
-                                    (base_bboxes, base_labels, base_scores) = extractor.extract_ssd_outputs(base_image)
-                                    (opt_bboxes, opt_labels, opt_scores) = extractor.extract_ssd_outputs(opt_image)
-
-                                    if (base_labels == [] and opt_labels == []) or (base_bboxes == [] and opt_bboxes == []):
-                                        continue
-
-                                    metric_5 = evaluator_5.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
-                                    metrics_5.append(metric_5)
-
-                                    metric_7 = evaluator_7.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
-                                    metrics_7.append(metric_7)
-
-                                    metric_9 = evaluator_9.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
-                                    metrics_9.append(metric_9)
-
-                                
-                                model_comparisons[model_name_opset][current_pass][output[0]] = {
-                                    "metrics_0_5": {
-                                        "avg_f1": np.mean([o["F1"] for o in metrics_5]) * 100,
-                                        "avg_prec": np.mean([o["precision"] for o in metrics_5]) * 100,
-                                        "avg_recall": np.mean([o["recall"] for o in metrics_5]) * 100,
-                                        "avg_mAP": np.mean([o["mAP"] for o in metrics_5]) * 100,
-                                        "avg_IoU": np.mean([o["IoU"] for o in metrics_5]) * 100,
-                                    },
-                                    "metrics_0_7": {
-                                        "avg_f1": np.mean([o["F1"] for o in metrics_7]) * 100,
-                                        "avg_prec": np.mean([o["precision"] for o in metrics_7]) * 100,
-                                        "avg_recall": np.mean([o["recall"] for o in metrics_7]) * 100,
-                                        "avg_mAP": np.mean([o["mAP"] for o in metrics_7]) * 100,
-                                        "avg_IoU": np.mean([o["IoU"] for o in metrics_7]) * 100,
-                                    },
-                                    "metrics_0_9": {
-                                        "avg_f1": np.mean([o["F1"] for o in metrics_9]) * 100,
-                                        "avg_prec": np.mean([o["precision"] for o in metrics_9]) * 100,
-                                        "avg_recall": np.mean([o["recall"] for o in metrics_9]) * 100,
-                                        "avg_mAP": np.mean([o["mAP"] for o in metrics_9]) * 100,
-                                        "avg_IoU": np.mean([o["IoU"] for o in metrics_9]) * 100,
-                                    }
-                                }
-
-                                cmp_object = {}
-                                if (evaluation["percentage_dissimilar1"][1] != -1):
-                                    cmp_object["first"] = evaluation["percentage_dissimilar1"][1]
-                                if (evaluation["percentage_dissimilar5"][1] != -1):
-                                    cmp_object["top5"] = evaluation["percentage_dissimilar5"][1]
-
-                                comparator = SSDComparator(evaluation, model_comparisons)
-                                comparator.update(model_name_opset, current_pass, include_certainties=include_certainties, array_index=1)
+                        if current_pass == "all":
+                            print("Running optimized TVM model. Pass: all")
+                            opt_model_out = tvm_runner.execute_relax_model(
+                                base_relax_mod,
+                                images_paths,
+                                config=model_config,
+                                include_certainties=include_certainties,
+                                optimized=True,
+                            )
                         else:
-                            evaluation = onnx_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties)
-                            output =[node.name for node in model.graph.output]
-                            model_comparisons[model_name_opset][current_pass] = {}
+                            required_dependencies = opt_helper.get_tvm_isolation_dependencies(
+                                current_pass
+                            )
+                            included_dependencies = []
+                            dependency_failure = None
+                            dependency_checks = []
 
-                            for i, output_node in enumerate(output):
-                                cmp_object = {}
-                                if (evaluation["percentage_dissimilar1"][i] != -1):
-                                    cmp_object["first"] = evaluation["percentage_dissimilar1"][i]
-                                if (evaluation["percentage_dissimilar5"][i] != -1):
-                                    cmp_object["top5"] = evaluation["percentage_dissimilar5"][i]
-                                cmp_object["topK"] = evaluation["percentage_dissimilar"][i]
+                            for dependency in required_dependencies:
+                                included_dependencies.append(dependency)
+                                dependency_mod = tvm_builder.build_relax(
+                                    model,
+                                    {first_input["name"]: model_shape},
+                                )
+                                dependency_pipeline = opt_helper.get_tvm_isolation_pipeline(
+                                    current_pass,
+                                    dependencies=included_dependencies,
+                                    include_optimization=False,
+                                )
+                                try:
+                                    dependency_out = tvm_runner.execute_relax_model(
+                                        dependency_mod,
+                                        images_paths,
+                                        config=model_config,
+                                        include_certainties=include_certainties,
+                                        relax_pipeline=dependency_pipeline,
+                                    )
+                                except Exception as error:
+                                    dependency_failure = {
+                                        "pass": dependency,
+                                        "error": repr(error),
+                                    }
+                                    dependency_checks.append(
+                                        {
+                                            "pass": dependency,
+                                            "status": "failed",
+                                            "error": repr(error),
+                                        }
+                                    )
+                                    break
 
-                                model_comparisons[model_name_opset][current_pass][output[i]] = cmp_object
+                                dependency_evaluation = tvm_runner.evaluate(
+                                    base_model_out,
+                                    dependency_out,
+                                    type=tags,
+                                    include_certainties=include_certainties,
+                                    enable_kt_on_one_dim_tensor=enable_kt_on_one_dim_tensor,
+                                )
+                                dependency_different = _has_dissimilarity(
+                                    dependency_evaluation
+                                )
+                                dependency_checks.append(
+                                    {
+                                        "pass": dependency,
+                                        "status": (
+                                            "different"
+                                            if dependency_different
+                                            else "passed"
+                                        ),
+                                        "percentage_dissimilar": dependency_evaluation.get(
+                                            "percentage_dissimilar"
+                                        ),
+                                    }
+                                )
+                                if dependency_different:
+                                    dependency_failure = {
+                                        "pass": dependency,
+                                        "reason": "dependency output differs from default TVM output",
+                                    }
+                                    break
 
-                            # This assumes the new model has the same output structure
-                            # with SSD (boxes, classes, scores).
-                            # TODO: Extend to work for every model.
+                            model_comparisons[model_name_opset]["dependency_checks"][
+                                current_pass
+                            ] = dependency_checks
+
+                            if dependency_failure is not None:
+                                model_comparisons[model_name_opset]["dependency_failures"][
+                                    current_pass
+                                ] = dependency_failure
+                                model_comparisons[model_name_opset]["blocked"].append(
+                                    current_pass
+                                )
+                                conversion_failed = True
+                            else:
+                                print(
+                                    f"Running isolated TVM optimization: {current_pass}"
+                                )
+                                candidate_mod = tvm_builder.build_relax(
+                                    model,
+                                    {first_input["name"]: model_shape},
+                                )
+                                candidate_pipeline = opt_helper.get_tvm_isolation_pipeline(
+                                    current_pass,
+                                    dependencies=required_dependencies,
+                                    include_optimization=True,
+                                )
+                                opt_model_out = tvm_runner.execute_relax_model(
+                                    candidate_mod,
+                                    images_paths,
+                                    config=model_config,
+                                    include_certainties=include_certainties,
+                                    relax_pipeline=candidate_pipeline,
+                                )
+                    except Exception as e:
+                        print(f"TVM Relax pass {current_pass} error: {e}")
+                        if current_pass not in model_comparisons[model_name_opset]["blocked"]:
+                            if model_name_opset not in model_comparisons["conversion_errors"]:
+                                model_comparisons["conversion_errors"][model_name_opset] = {}
+                            model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(e)
+                            model_comparisons[model_name_opset]["failed"].append(current_pass)
+                            model_comparisons["failed_conversions_no"] += 1
+                        conversion_failed = True
+                else:
+                    # --- ORT branch ---
+                    try:
+                        if not run_individual_passes:
+                            p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                            current_pass = "all"
+                        else:
+                            p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path + " -p " + current_pass], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+                        
+                        (output, err) = p.communicate()  
+                        p.wait()
+                        if p.returncode != 0:
+                            print(output)
+                            if model_name_opset not in model_comparisons["conversion_errors"]:
+                                model_comparisons["conversion_errors"][model_name_opset] = {}
+                            model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(output)
+                            model_comparisons["failed_conversions_no"] += 1
+                            conversion_failed = True
+
+                    except subprocess.CalledProcessError as e:
+                        print('Fatal error: code={}, out="{}"'.format(e.returncode, e.output))
+
+                    opt_hash = None
+                    try:
+                        opt_hash = hashlib.md5(open(opt_model_path,'rb').read()).hexdigest()
+                    except:
+                        conversion_failed = True
+                    if (opt_hash is not None and original_hash == opt_hash):
+                        print(current_pass + " has no effect on model " + model_name)
+                        model_comparisons[model_name_opset]["skipped"].append(current_pass)
+                    elif (not conversion_failed):
+                        print("Running optimized model. Pass: " + current_pass)
+                        print(opt_model_path)
+                        try:
+                            onnx_model = onnx.load(opt_model_path)
+                            
+                            if "text" not in tags:
+                                opt_model_out = onnx_runner.execute_onnx_model(onnx_model, images_paths, config=model_config, include_certainties=include_certainties)
+
+                        except Exception as e:
+                            if model_name_opset not in model_comparisons["conversion_errors"]:
+                                model_comparisons["conversion_errors"][model_name_opset] = {}
+                            model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(e)
+                            model_comparisons[model_name_opset]["failed"].append(current_pass)
+                            conversion_failed = True
+
+                if not conversion_failed and opt_model_out is not None:
+                    runner_eval = tvm_runner if backend == "tvmr" else onnx_runner
+
+                    if ("classification" in tags):
+                        evaluation = runner_eval.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties)
+                        print(evaluation)
+                        comparator = ClassificationComparator(evaluation, model_comparisons)
+                        comparator.update(model_name_opset, current_pass, include_certainties=include_certainties)
+
+                    elif ("object detection segmentation" in tags and "RetinaNet" not in model_name_opset):
+                        model_comparisons[model_name_opset][current_pass] = {}
+                        evaluation = onnx_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties, enable_kt_on_one_dim_tensor=enable_kt_on_one_dim_tensor)
+                        print(evaluation)
+                        if "YOLOv3" in model_name_opset:
+                            comparator = YOLOV3Comparator(evaluation, model_comparisons)
+                            comparator.update(model_name_opset, model, base_model_out, opt_model_out, current_pass)
+
+                        elif "YOLOv2-9" in model_name_opset:
+                            extractor = YOLOV2Extractor()
+
+                            metrics_5 = []
+                            metrics_7 = []
+                            metrics_9 = []
+                            evaluator_5 = ObjectDetectionEvaluator(iou_threshold=0.5)
+                            evaluator_7 = ObjectDetectionEvaluator(iou_threshold=0.75)
+                            evaluator_9 = ObjectDetectionEvaluator(iou_threshold=0.9)
+
+                            output = [node.name for node in model.graph.output]
+
+                            for img_key in base_model_out.keys():
+                                base_image = base_model_out[img_key]
+                                opt_image = opt_model_out[img_key]
+                                base_data = extractor.extract_yolo_outputs(base_image)
+                                base_bboxes = base_data[0]
+                                base_labels = base_data[1]
+                                base_scores = base_data[2]
+
+                                opt_data = extractor.extract_yolo_outputs(opt_image)
+                                opt_bboxes = opt_data[0]
+                                opt_labels = opt_data[1]
+                                opt_scores = opt_data[2]
+
+                                # Skip undetected classes.
+                                if (base_labels == [] and opt_labels == []) or (base_bboxes == [] and opt_bboxes == []):
+                                    continue
+
+                                metric_5 = evaluator_5.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
+                                metrics_5.append(metric_5)
+
+                                metric_7 = evaluator_7.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
+                                metrics_7.append(metric_7)
+
+                                metric_9 = evaluator_9.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
+                                metrics_9.append(metric_9)
+
+                            model_comparisons[model_name_opset][current_pass][output[0]] = {
+                                "metrics_0_5": {
+                                    "avg_f1": np.mean([o["F1"] for o in metrics_5]) * 100,
+                                    "avg_prec": np.mean([o["precision"] for o in metrics_5]) * 100,
+                                    "avg_recall": np.mean([o["recall"] for o in metrics_5]) * 100,
+                                    "avg_mAP": np.mean([o["mAP"] for o in metrics_5]) * 100,
+                                    "avg_IoU": np.mean([o["IoU"] for o in metrics_5]) * 100,
+                                },
+                                "metrics_0_7": {
+                                    "avg_f1": np.mean([o["F1"] for o in metrics_7]) * 100,
+                                    "avg_prec": np.mean([o["precision"] for o in metrics_7]) * 100,
+                                    "avg_recall": np.mean([o["recall"] for o in metrics_7]) * 100,
+                                    "avg_mAP": np.mean([o["mAP"] for o in metrics_7]) * 100,
+                                    "avg_IoU": np.mean([o["IoU"] for o in metrics_7]) * 100,
+                                },
+                                "metrics_0_9": {
+                                    "avg_f1": np.mean([o["F1"] for o in metrics_9]) * 100,
+                                    "avg_prec": np.mean([o["precision"] for o in metrics_9]) * 100,
+                                    "avg_recall": np.mean([o["recall"] for o in metrics_9]) * 100,
+                                    "avg_mAP": np.mean([o["mAP"] for o in metrics_9]) * 100,
+                                    "avg_IoU": np.mean([o["IoU"] for o in metrics_9]) * 100,
+                                }
+                            }
+
+                        elif "SSD" in model_name_opset:
+                            extractor = SSDExtractor()
+
+                            metrics_5 = []
+                            metrics_7 = []
+                            metrics_9 = []
+                            evaluator_5 = ObjectDetectionEvaluator(iou_threshold=0.5)
+                            evaluator_7 = ObjectDetectionEvaluator(iou_threshold=0.75)
+                            evaluator_9 = ObjectDetectionEvaluator(iou_threshold=0.9)
+
+                            output = [node.name for node in model.graph.output]
+
+                            for img_key in base_model_out.keys():
+                                base_image = base_model_out[img_key]
+                                opt_image = opt_model_out[img_key]
+
+                                (base_bboxes, base_labels, base_scores) = extractor.extract_ssd_outputs(base_image)
+                                (opt_bboxes, opt_labels, opt_scores) = extractor.extract_ssd_outputs(opt_image)
+
+                                if (base_labels == [] and opt_labels == []) or (base_bboxes == [] and opt_bboxes == []):
+                                    continue
+
+                                metric_5 = evaluator_5.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
+                                metrics_5.append(metric_5)
+
+                                metric_7 = evaluator_7.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
+                                metrics_7.append(metric_7)
+
+                                metric_9 = evaluator_9.compute_metrics(base_bboxes, base_labels, base_scores, opt_bboxes, opt_labels, opt_scores)
+                                metrics_9.append(metric_9)
+
+                            
+                            model_comparisons[model_name_opset][current_pass][output[0]] = {
+                                "metrics_0_5": {
+                                    "avg_f1": np.mean([o["F1"] for o in metrics_5]) * 100,
+                                    "avg_prec": np.mean([o["precision"] for o in metrics_5]) * 100,
+                                    "avg_recall": np.mean([o["recall"] for o in metrics_5]) * 100,
+                                    "avg_mAP": np.mean([o["mAP"] for o in metrics_5]) * 100,
+                                    "avg_IoU": np.mean([o["IoU"] for o in metrics_5]) * 100,
+                                },
+                                "metrics_0_7": {
+                                    "avg_f1": np.mean([o["F1"] for o in metrics_7]) * 100,
+                                    "avg_prec": np.mean([o["precision"] for o in metrics_7]) * 100,
+                                    "avg_recall": np.mean([o["recall"] for o in metrics_7]) * 100,
+                                    "avg_mAP": np.mean([o["mAP"] for o in metrics_7]) * 100,
+                                    "avg_IoU": np.mean([o["IoU"] for o in metrics_7]) * 100,
+                                },
+                                "metrics_0_9": {
+                                    "avg_f1": np.mean([o["F1"] for o in metrics_9]) * 100,
+                                    "avg_prec": np.mean([o["precision"] for o in metrics_9]) * 100,
+                                    "avg_recall": np.mean([o["recall"] for o in metrics_9]) * 100,
+                                    "avg_mAP": np.mean([o["mAP"] for o in metrics_9]) * 100,
+                                    "avg_IoU": np.mean([o["IoU"] for o in metrics_9]) * 100,
+                                }
+                            }
+
+                            cmp_object = {}
+                            if (evaluation["percentage_dissimilar1"][1] != -1):
+                                cmp_object["first"] = evaluation["percentage_dissimilar1"][1]
+                            if (evaluation["percentage_dissimilar5"][1] != -1):
+                                cmp_object["top5"] = evaluation["percentage_dissimilar5"][1]
+
                             comparator = SSDComparator(evaluation, model_comparisons)
                             comparator.update(model_name_opset, current_pass, include_certainties=include_certainties, array_index=1)
-                            
-                        model_comparisons["model_instances_run"] += 1
-                        model_comparisons[model_name_opset]["run"] += 1
-                    
+                    else:
+                        evaluation = onnx_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties)
+                        output =[node.name for node in model.graph.output]
+                        model_comparisons[model_name_opset][current_pass] = {}
+
+                        for i, output_node in enumerate(output):
+                            cmp_object = {}
+                            if (evaluation["percentage_dissimilar1"][i] != -1):
+                                cmp_object["first"] = evaluation["percentage_dissimilar1"][i]
+                            if (evaluation["percentage_dissimilar5"][i] != -1):
+                                cmp_object["top5"] = evaluation["percentage_dissimilar5"][i]
+                            cmp_object["topK"] = evaluation["percentage_dissimilar"][i]
+
+                            model_comparisons[model_name_opset][current_pass][output[i]] = cmp_object
+
+                        # This assumes the new model has the same output structure
+                        # with SSD (boxes, classes, scores).
+                        # TODO: Extend to work for every model.
+                        comparator = SSDComparator(evaluation, model_comparisons)
+                        comparator.update(model_name_opset, current_pass, include_certainties=include_certainties, array_index=1)
+                        
+                    model_comparisons["model_instances_run"] += 1
+                    model_comparisons[model_name_opset]["run"] += 1
+                
                     json_object = json.dumps(model_comparisons, indent=2)
 
-                    # TODO: Remove after debugging.
-                    with open(model_comparisons_file, "w") as outfile:
-                        outfile.write(json_object)
+                json_object = json.dumps(model_comparisons, indent=2)
+                with open(model_comparisons_file, "w") as outfile:
+                    outfile.write(json_object)
                 
                 if not run_individual_passes:
                     break
