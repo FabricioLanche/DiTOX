@@ -99,6 +99,11 @@ if [[ -n "$conda_env_prefix" ]]; then
 else
     conda_env_prefix="$(find_prefix_from_conda conda || true)"
 
+    default_env_prefix="$HOME/.conda/envs/$conda_env"
+    if [[ -z "$conda_env_prefix" && -x "$default_env_prefix/bin/python" ]]; then
+        conda_env_prefix="$default_env_prefix"
+    fi
+
     if [[ -z "$conda_env_prefix" && -f "$HOME/.conda/environments.txt" ]]; then
         while IFS= read -r candidate; do
             if [[ "${candidate##*/}" == "$conda_env" \
@@ -116,6 +121,7 @@ else
 
     if [[ -z "$conda_env_prefix" ]]; then
         printf 'Error: Conda environment "%s" was not found.\n' "$conda_env" >&2
+        printf 'Checked default environment prefix: %s\n' "$default_env_prefix" >&2
         printf 'Conda selected from PATH: %s\n' "$(command -v conda)" >&2
         printf 'Environments visible to that Conda installation:\n' >&2
         conda env list >&2 || true

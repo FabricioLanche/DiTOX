@@ -158,6 +158,9 @@ fi
 printf 'Entorno %s listo; PyTorch incluye runtime CUDA %s.\n' "$environment_name" "$cuda_version"
 printf 'Para usar la GPU, ejecuta DiTOX dentro de un job/nodo con GPU asignada en Slurm.\n'
 
+# Dataset failures must not remove an environment that was prepared successfully.
+environment_created=0
+
 mkdir -p "$target_dir"
 
 image_count=0
