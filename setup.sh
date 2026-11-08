@@ -3,7 +3,7 @@ set -euo pipefail
 
 project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 target_dir="$project_root/images/COCO"
-download_url="https://images.cocodataset.org/zips/val2017.zip"
+download_url="${COCO_VAL2017_URL:-https://s3.amazonaws.com/images.cocodataset.org/zips/val2017.zip}"
 expected_images=5000
 environment_name="ditox-cuda"
 python_version="3.11"
@@ -177,11 +177,6 @@ if [[ "$image_count" -eq "$expected_images" ]]; then
     exit 0
 fi
 
-if ! command -v unzip >/dev/null 2>&1; then
-    printf 'Error: se requiere unzip para extraer COCO val2017.\n' >&2
-    exit 1
-fi
-
 if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
     printf 'Error: se requiere curl o wget para descargar COCO val2017.\n' >&2
     exit 1
@@ -192,19 +187,52 @@ archive="$temp_dir/val2017.zip"
 
 printf 'Descargando COCO val2017 desde %s...\n' "$download_url"
 if command -v curl >/dev/null 2>&1; then
-    curl --fail --location --retry 3 --output "$archive" "$download_url"
+    if ! curl --fail --location --retry 3 --show-error --output "$archive" "$download_url"; then
+        printf 'Error: no se pudo descargar COCO val2017 desde %s; verifica el acceso HTTPS y el certificado TLS.\n' \
+            "$download_url" >&2
+        exit 1
+    fi
 else
-    wget --tries=3 --output-document="$archive" "$download_url"
+    if ! wget --https-only --tries=3 --output-document="$archive" "$download_url"; then
+        printf 'Error: no se pudo descargar COCO val2017 desde %s; verifica el acceso HTTPS y el certificado TLS.\n' \
+            "$download_url" >&2
+        exit 1
+    fi
 fi
 
-unzip -tq "$archive" >/dev/null
-archive_images="$(unzip -Z1 "$archive" | awk '/^val2017\/[0-9]{12}\.jpg$/ { count++ } END { print count+0 }')"
-if [[ "$archive_images" -ne "$expected_images" ]]; then
-    printf 'Error: el ZIP contiene %s imágenes val2017; se esperaban %s.\n' "$archive_images" "$expected_images" >&2
-    exit 1
-fi
+"$environment_prefix/bin/python" - "$archive" "$target_dir" "$expected_images" <<'PY'
+import re
+import shutil
+import sys
+import zipfile
+from pathlib import Path
 
-unzip -j -o -q "$archive" 'val2017/*.jpg' -d "$target_dir"
+archive_path = Path(sys.argv[1])
+target_dir = Path(sys.argv[2])
+expected_images = int(sys.argv[3])
+image_pattern = re.compile(r"^val2017/[0-9]{12}\.jpg$")
+
+with zipfile.ZipFile(archive_path) as archive:
+    damaged_member = archive.testzip()
+    if damaged_member is not None:
+        raise SystemExit(f"Error: el ZIP está dañado en {damaged_member}.")
+
+    image_members = [
+        name for name in archive.namelist() if image_pattern.fullmatch(name)
+    ]
+    if len(image_members) != expected_images:
+        raise SystemExit(
+            f"Error: el ZIP contiene {len(image_members)} imágenes val2017; "
+            f"se esperaban {expected_images}."
+        )
+
+    for member in image_members:
+        destination = target_dir / Path(member).name
+        with archive.open(member) as source, destination.open("wb") as output:
+            shutil.copyfileobj(source, output)
+
+print(f"ZIP validado y extraído: {len(image_members)} imágenes.")
+PY
 
 image_count=0
 for image in "$target_dir"/*.jpg; do
