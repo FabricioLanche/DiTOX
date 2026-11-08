@@ -81,6 +81,7 @@ def main():
     manifest_categories = None
     manifest_missing_models = []
     manifest_excluded_by_config = []
+    offline_models = hub_config.get("offline", False)
     if manifest_path:
         manifest_file = Path(script_dir) / manifest_path.lstrip("/\\")
         with open(manifest_file, "r", encoding="utf-8") as manifest_stream:
@@ -98,7 +99,18 @@ def main():
             or f"{model_name}-{opset}" in excluded_names
             or opset < hub_config["opset_bottom_threshold"]
         ]
-        catalog = hub.list_models()
+        if offline_models:
+            cache_dir = Path(script_dir) / hub_config["cache_folder_rel_path"]
+            catalog_file = cache_dir / "ONNX_HUB_MANIFEST.json"
+            if not catalog_file.is_file():
+                raise FileNotFoundError(
+                    f"Offline ONNX Hub catalog not found: {catalog_file}. "
+                    "Run setup.sh to prepare the vision model cache."
+                )
+            with catalog_file.open("r", encoding="utf-8") as catalog_stream:
+                catalog = [hub.ModelInfo(item) for item in json.load(catalog_stream)]
+        else:
+            catalog = hub.list_models()
         catalog_by_id = {
             (item.model, int(item.opset)): item
             for item in catalog
@@ -285,7 +297,15 @@ def main():
 
             model_path = get_model_path(script_dir, model_obj)
 
-            model = hub.load(model_name, opset=model_opset)
+            if offline_models:
+                if not os.path.isfile(model_path):
+                    raise FileNotFoundError(
+                        f"Cached ONNX model not found: {model_path}. "
+                        "Run setup.sh to prepare the vision model cache."
+                    )
+                model = onnx.load(model_path)
+            else:
+                model = hub.load(model_name, opset=model_opset)
 
             if backend != "tvmr":
                 original_hash = hashlib.md5(open(model_path,'rb').read()).hexdigest()

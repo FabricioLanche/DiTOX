@@ -172,6 +172,8 @@ print(
 )
 PY
 
+python "$project_dir/scripts/download_vision_models.py" "$project_dir" --check
+
 shopt -s nullglob
 coco_images=("$project_dir"/images/COCO/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].jpg)
 if (( ${#coco_images[@]} != 5000 )); then

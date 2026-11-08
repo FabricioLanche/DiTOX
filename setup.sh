@@ -161,6 +161,10 @@ printf 'Para usar la GPU, ejecuta DiTOX dentro de un job/nodo con GPU asignada e
 # Dataset failures must not remove an environment that was prepared successfully.
 environment_created=0
 
+printf 'Preparando el catálogo y los modelos ONNX de visión para ejecución offline...\n'
+conda run --no-capture-output --prefix "$environment_prefix" \
+    python "$project_root/scripts/download_vision_models.py" "$project_root"
+
 mkdir -p "$target_dir"
 
 image_count=0

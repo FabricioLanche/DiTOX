@@ -28,7 +28,8 @@
     ],
     "opset_bottom_threshold": 7,
     "cache_folder_rel_path": "models_cache",
-    "model_manifest_rel_path": "models_manifest.json"
+    "model_manifest_rel_path": "models_manifest.json",
+    "offline": true
   },
   "optimizer": {
     "enabled": true,
