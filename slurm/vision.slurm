@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Submit from the project root: sbatch slurm/vision.slurm
+# Or from slurm/: sbatch vision.slurm
 # Resources can be overridden with sbatch, for example:
 #   sbatch --partition=debug --cpus-per-task=4 --mem=16G --time=01:00:00 slurm/vision.slurm
 # Environment overrides:
@@ -12,13 +13,23 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=96G
 #SBATCH --time=08:00:00
-#SBATCH --output=slurm/vision-%j.out
-#SBATCH --error=slurm/vision-%j.err
+#SBATCH --output=vision-%j.out
+#SBATCH --error=vision-%j.err
 
 set -Eeuo pipefail
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-project_dir="${PROJECT_DIR:-$(dirname "$script_dir")}"
+submit_dir="${SLURM_SUBMIT_DIR:-$PWD}"
+if [[ -n "${PROJECT_DIR:-}" ]]; then
+    project_dir="$PROJECT_DIR"
+elif [[ -f "$submit_dir/main.py" ]]; then
+    project_dir="$submit_dir"
+elif [[ -f "$submit_dir/../main.py" ]]; then
+    project_dir="$submit_dir/.."
+else
+    printf 'Error: could not locate the DiTOX project root from %s. Set PROJECT_DIR explicitly.\n' \
+        "$submit_dir" >&2
+    exit 1
+fi
 project_dir="$(cd -- "$project_dir" && pwd)"
 config_file="${CONFIG_FILE:-config_tvm_vision.json}"
 conda_env="${CONDA_ENV:-ditox-cuda}"
@@ -28,6 +39,10 @@ if [[ "$config_file" != /* ]]; then
 fi
 
 cd "$project_dir"
+if [[ ! -s "$project_dir/main.py" ]]; then
+    printf 'Error: main.py was not found in project root %s.\n' "$project_dir" >&2
+    exit 1
+fi
 mkdir -p "$project_dir/result_tvm/slurm"
 log_file="$project_dir/result_tvm/slurm/vision-${SLURM_JOB_ID:-manual}.log"
 exec > >(tee -a "$log_file") 2>&1
