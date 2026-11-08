@@ -17,6 +17,8 @@
 #SBATCH --error=vision-%j.err
 
 set -Eeuo pipefail
+conda_env="${CONDA_ENV:-ditox-cuda}"
+conda_install_dir="${CONDA_INSTALL_DIR:-$HOME/.local/miniforge3}"
 
 submit_dir="${SLURM_SUBMIT_DIR:-$PWD}"
 if [[ -n "${PROJECT_DIR:-}" ]]; then
@@ -32,7 +34,6 @@ else
 fi
 project_dir="$(cd -- "$project_dir" && pwd)"
 config_file="${CONFIG_FILE:-config_tvm_vision.json}"
-conda_env="${CONDA_ENV:-ditox-cuda}"
 
 if [[ "$config_file" != /* ]]; then
     config_file="$project_dir/$config_file"
@@ -58,19 +59,55 @@ printf 'Job: %s | CPUs: %s | Memory: %s | Time limit: %s\n' \
 export LD_PRELOAD="${LD_PRELOAD-}"
 if command -v module >/dev/null 2>&1; then
     module purge
-    module load miniconda/3.0
+    if ! module load miniconda/3.0; then
+        printf 'Warning: miniconda/3.0 module is unavailable; checking local Conda.\n' >&2
+    fi
 fi
 
 if ! command -v conda >/dev/null 2>&1; then
-    export PATH="${CONDA_INSTALL_DIR:-$HOME/.local/miniforge3}/bin:$PATH"
+    if [[ -x "$conda_install_dir/bin/conda" ]]; then
+        export PATH="$conda_install_dir/bin:$PATH"
+        hash -r
+    fi
 fi
+
 if ! command -v conda >/dev/null 2>&1; then
-    printf 'Error: Conda is unavailable. Initialize Conda or load miniconda/3.0.\n' >&2
+    printf 'Error: Conda is unavailable. Run setup.sh first or set CONDA_INSTALL_DIR.\n' >&2
     exit 1
+fi
+
+conda_has_environment() {
+    conda env list 2>/dev/null \
+        | awk -v env="$conda_env" '$1 == env { found=1 } END { exit !found }'
+}
+
+if ! conda_has_environment; then
+    local_conda="$conda_install_dir/bin/conda"
+    if [[ -x "$local_conda" ]] \
+        && "$local_conda" env list 2>/dev/null \
+            | awk -v env="$conda_env" '$1 == env { found=1 } END { exit !found }'; then
+        export PATH="$conda_install_dir/bin:$PATH"
+        hash -r
+        printf 'Using local Conda at %s for environment %s.\n' \
+            "$conda_install_dir" "$conda_env"
+    else
+        printf 'Error: Conda environment "%s" was not found.\n' "$conda_env" >&2
+        printf 'Conda selected from PATH: %s\n' "$(command -v conda)" >&2
+        printf 'Environments visible to that Conda installation:\n' >&2
+        conda env list >&2 || true
+        if [[ -x "$local_conda" ]]; then
+            printf 'Environments visible to local Miniforge at %s:\n' "$conda_install_dir" >&2
+            "$local_conda" env list >&2 || true
+        fi
+        printf 'Set CONDA_ENV to the installed environment name or CONDA_INSTALL_DIR to its Conda installation.\n' >&2
+        exit 1
+    fi
 fi
 
 eval "$(conda shell.bash hook)"
 conda activate "$conda_env"
+printf 'Conda environment: %s\nConda executable: %s\n' \
+    "$CONDA_PREFIX" "$(command -v conda)"
 
 if [[ ! -s "$config_file" ]]; then
     printf 'Error: config file is missing or empty: %s\n' "$config_file" >&2
