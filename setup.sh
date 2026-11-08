@@ -7,6 +7,7 @@ download_url="https://images.cocodataset.org/zips/val2017.zip"
 expected_images=5000
 environment_name="ditox-cuda"
 python_version="3.11"
+environment_prefix="${CONDA_ENV_PREFIX:-}"
 conda_install_dir="${CONDA_INSTALL_DIR:-${HOME}/.local/miniforge3}"
 miniforge_version="${MINIFORGE_VERSION:-24.11.3-2}"
 environment_created=0
@@ -18,9 +19,9 @@ cleanup() {
     trap - EXIT
 
     if [[ "$status" -ne 0 && "$environment_created" -eq 1 ]]; then
-        if conda env list | awk -v env="$environment_name" '$1 == env { found=1 } END { exit !found }'; then
+        if [[ -x "$environment_prefix/bin/python" ]]; then
             printf 'La configuración falló; eliminando el entorno recién creado %s...\n' "$environment_name" >&2
-            if ! conda env remove --yes --name "$environment_name"; then
+            if ! conda env remove --yes --prefix "$environment_prefix"; then
                 printf 'Error: no se pudo eliminar el entorno %s durante el rollback.\n' "$environment_name" >&2
             fi
         fi
@@ -40,13 +41,11 @@ trap cleanup EXIT
 
 printf 'Preparando el entorno CUDA de DiTOX y COCO val2017.\n'
 
-if ! command -v conda >/dev/null 2>&1; then
-    export LD_PRELOAD="${LD_PRELOAD-}"
-    if command -v module >/dev/null 2>&1; then
-        module purge
-        if ! module load miniconda/3.0 >/dev/null 2>&1; then
-            printf 'Aviso: no se pudo cargar miniconda/3.0; se usará Miniforge local si hace falta.\n' >&2
-        fi
+export LD_PRELOAD="${LD_PRELOAD-}"
+if command -v module >/dev/null 2>&1; then
+    module purge
+    if ! module load miniconda/3.0 >/dev/null 2>&1; then
+        printf 'Aviso: no se pudo cargar miniconda/3.0; se usará Miniforge local si hace falta.\n' >&2
     fi
 fi
 
@@ -101,19 +100,56 @@ if [[ ! -f "$project_root/requirements.txt" ]]; then
     exit 1
 fi
 
-if ! conda env list | awk -v env="$environment_name" '$1 == env { found=1 } END { exit !found }'; then
-    printf 'Creando el entorno Conda %s con Python %s...\n' "$environment_name" "$python_version"
-    environment_created=1
-    conda create --yes --name "$environment_name" "python=$python_version" pip
+find_named_environment() {
+    local candidate
+
+    candidate="$(conda env list 2>/dev/null \
+        | awk -v env="$environment_name" '$1 == env { print $NF; exit }' || true)"
+    if [[ -n "$candidate" && -x "$candidate/bin/python" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+
+    if [[ -f "$HOME/.conda/environments.txt" ]]; then
+        while IFS= read -r candidate; do
+            if [[ "${candidate##*/}" == "$environment_name" \
+                && -x "$candidate/bin/python" ]]; then
+                printf '%s\n' "$candidate"
+                return 0
+            fi
+        done < "$HOME/.conda/environments.txt"
+    fi
+
+    return 1
+}
+
+if [[ -z "$environment_prefix" ]]; then
+    environment_prefix="$(find_named_environment || true)"
+    if [[ -z "$environment_prefix" ]]; then
+        environment_prefix="$HOME/.conda/envs/$environment_name"
+    fi
+fi
+
+if [[ -x "$environment_prefix/bin/python" ]]; then
+    printf 'El entorno Conda %s ya existe en %s; se actualizarán sus dependencias. No se eliminará en caso de error.\n' \
+        "$environment_name" "$environment_prefix"
+elif [[ -e "$environment_prefix" ]]; then
+    printf 'Error: %s existe, pero no parece un entorno Conda válido.\n' "$environment_prefix" >&2
+    printf 'Revísalo o define CONDA_ENV_PREFIX con otra ruta válida.\n' >&2
+    exit 1
 else
-    printf 'El entorno Conda %s ya existe; se actualizarán sus dependencias. No se eliminará en caso de error.\n' "$environment_name"
+    printf 'Creando el entorno Conda %s en %s con Python %s...\n' \
+        "$environment_name" "$environment_prefix" "$python_version"
+    environment_created=1
+    mkdir -p "$(dirname "$environment_prefix")"
+    conda create --yes --prefix "$environment_prefix" "python=$python_version" pip
 fi
 
 printf 'Instalando dependencias de %s...\n' "$project_root/requirements.txt"
-conda run --no-capture-output --name "$environment_name" \
+conda run --no-capture-output --prefix "$environment_prefix" \
     python -m pip install -r "$project_root/requirements.txt"
 
-cuda_version="$(conda run --no-capture-output --name "$environment_name" \
+cuda_version="$(conda run --no-capture-output --prefix "$environment_prefix" \
     python -c 'import torch; print(torch.version.cuda or "")')"
 if [[ -z "$cuda_version" ]]; then
     printf 'Error: PyTorch no tiene soporte CUDA en el entorno %s.\n' "$environment_name" >&2

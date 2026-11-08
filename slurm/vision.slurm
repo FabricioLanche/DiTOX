@@ -18,6 +18,7 @@
 
 set -Eeuo pipefail
 conda_env="${CONDA_ENV:-ditox-cuda}"
+conda_env_prefix="${CONDA_ENV_PREFIX:-}"
 conda_install_dir="${CONDA_INSTALL_DIR:-$HOME/.local/miniforge3}"
 
 submit_dir="${SLURM_SUBMIT_DIR:-$PWD}"
@@ -76,36 +77,65 @@ if ! command -v conda >/dev/null 2>&1; then
     exit 1
 fi
 
-conda_has_environment() {
-    conda env list 2>/dev/null \
-        | awk -v env="$conda_env" '$1 == env { found=1 } END { exit !found }'
+find_prefix_from_conda() {
+    local conda_command="$1"
+    local candidate
+
+    candidate="$("$conda_command" env list 2>/dev/null \
+        | awk -v env="$conda_env" '$1 == env { print $NF; exit }' || true)"
+    if [[ -n "$candidate" && -x "$candidate/bin/python" ]]; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+    return 1
 }
 
-if ! conda_has_environment; then
+if [[ -n "$conda_env_prefix" ]]; then
+    if [[ ! -x "$conda_env_prefix/bin/python" ]]; then
+        printf 'Error: CONDA_ENV_PREFIX does not contain an environment Python: %s\n' \
+            "$conda_env_prefix" >&2
+        exit 1
+    fi
+else
+    conda_env_prefix="$(find_prefix_from_conda conda || true)"
+
+    if [[ -z "$conda_env_prefix" && -f "$HOME/.conda/environments.txt" ]]; then
+        while IFS= read -r candidate; do
+            if [[ "${candidate##*/}" == "$conda_env" \
+                && -x "$candidate/bin/python" ]]; then
+                conda_env_prefix="$candidate"
+                break
+            fi
+        done < "$HOME/.conda/environments.txt"
+    fi
+
     local_conda="$conda_install_dir/bin/conda"
-    if [[ -x "$local_conda" ]] \
-        && "$local_conda" env list 2>/dev/null \
-            | awk -v env="$conda_env" '$1 == env { found=1 } END { exit !found }'; then
-        export PATH="$conda_install_dir/bin:$PATH"
-        hash -r
-        printf 'Using local Conda at %s for environment %s.\n' \
-            "$conda_install_dir" "$conda_env"
-    else
+    if [[ -z "$conda_env_prefix" && -x "$local_conda" ]]; then
+        conda_env_prefix="$(find_prefix_from_conda "$local_conda" || true)"
+    fi
+
+    if [[ -z "$conda_env_prefix" ]]; then
         printf 'Error: Conda environment "%s" was not found.\n' "$conda_env" >&2
         printf 'Conda selected from PATH: %s\n' "$(command -v conda)" >&2
         printf 'Environments visible to that Conda installation:\n' >&2
         conda env list >&2 || true
+        if [[ -f "$HOME/.conda/environments.txt" ]]; then
+            printf 'Registered Conda environment prefixes:\n' >&2
+            cat "$HOME/.conda/environments.txt" >&2
+        fi
         if [[ -x "$local_conda" ]]; then
-            printf 'Environments visible to local Miniforge at %s:\n' "$conda_install_dir" >&2
+            printf 'Environments visible to local Conda at %s:\n' "$conda_install_dir" >&2
             "$local_conda" env list >&2 || true
         fi
-        printf 'Set CONDA_ENV to the installed environment name or CONDA_INSTALL_DIR to its Conda installation.\n' >&2
+        printf 'Run bash setup.sh with the same account, or set CONDA_ENV_PREFIX to the existing environment prefix.\n' >&2
         exit 1
     fi
 fi
 
+printf 'Using Conda environment %s at %s.\n' "$conda_env" "$conda_env_prefix"
+
 eval "$(conda shell.bash hook)"
-conda activate "$conda_env"
+conda activate "$conda_env_prefix"
 printf 'Conda environment: %s\nConda executable: %s\n' \
     "$CONDA_PREFIX" "$(command -v conda)"
 
