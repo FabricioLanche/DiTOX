@@ -7,8 +7,11 @@ download_url="https://images.cocodataset.org/zips/val2017.zip"
 expected_images=5000
 environment_name="ditox-cuda"
 python_version="3.11"
+conda_install_dir="${CONDA_INSTALL_DIR:-${HOME}/.local/miniforge3}"
+miniforge_version="${MINIFORGE_VERSION:-24.11.3-2}"
 environment_created=0
 temp_dir=""
+installer_path=""
 
 cleanup() {
     status=$?
@@ -27,6 +30,10 @@ cleanup() {
         rm -rf -- "$temp_dir"
     fi
 
+    if [[ -n "$installer_path" && -f "$installer_path" ]]; then
+        rm -f -- "$installer_path"
+    fi
+
     exit "$status"
 }
 trap cleanup EXIT
@@ -34,7 +41,58 @@ trap cleanup EXIT
 printf 'Preparando el entorno CUDA de DiTOX y COCO val2017.\n'
 
 if ! command -v conda >/dev/null 2>&1; then
-    printf 'Error: se requiere Conda; inicialízalo y vuelve a ejecutar este script.\n' >&2
+    export LD_PRELOAD="${LD_PRELOAD-}"
+    if command -v module >/dev/null 2>&1; then
+        module purge
+        if ! module load miniconda/3.0 >/dev/null 2>&1; then
+            printf 'Aviso: no se pudo cargar miniconda/3.0; se usará Miniforge local si hace falta.\n' >&2
+        fi
+    fi
+fi
+
+if ! command -v conda >/dev/null 2>&1; then
+    case "$(uname -m)" in
+        x86_64) miniforge_arch="x86_64" ;;
+        aarch64|arm64) miniforge_arch="aarch64" ;;
+        *)
+            printf 'Error: arquitectura no soportada para Miniforge: %s\n' "$(uname -m)" >&2
+            exit 1
+            ;;
+    esac
+
+    if [[ -e "$conda_install_dir" && ! -x "$conda_install_dir/bin/conda" ]]; then
+        printf 'Error: %s existe, pero no contiene una instalación válida de Conda.\n' \
+            "$conda_install_dir" >&2
+        printf 'Define CONDA_INSTALL_DIR con una ruta vacía o válida e inténtalo de nuevo.\n' >&2
+        exit 1
+    fi
+
+    if [[ ! -x "$conda_install_dir/bin/conda" ]]; then
+        if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
+            printf 'Error: se requiere curl o wget para descargar Miniforge.\n' >&2
+            exit 1
+        fi
+
+        miniforge_file="Miniforge3-Linux-${miniforge_arch}.sh"
+        miniforge_url="${MINIFORGE_URL:-https://github.com/conda-forge/miniforge/releases/download/${miniforge_version}/${miniforge_file}}"
+        installer_path="$(mktemp "${TMPDIR:-/tmp}/Miniforge3-${miniforge_arch}.XXXXXX.sh")"
+        printf 'Conda no está disponible. Instalando Miniforge en %s...\n' "$conda_install_dir"
+        if command -v curl >/dev/null 2>&1; then
+            curl --fail --location --retry 3 --output "$installer_path" "$miniforge_url"
+        else
+            wget --https-only --tries=3 --output-document="$installer_path" "$miniforge_url"
+        fi
+        mkdir -p "$(dirname "$conda_install_dir")"
+        bash "$installer_path" -b -p "$conda_install_dir"
+        rm -f -- "$installer_path"
+        installer_path=""
+    fi
+
+    export PATH="$conda_install_dir/bin:$PATH"
+fi
+
+if ! command -v conda >/dev/null 2>&1; then
+    printf 'Error: no se pudo disponer de Conda mediante el módulo ni Miniforge.\n' >&2
     exit 1
 fi
 
