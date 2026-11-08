@@ -1,6 +1,6 @@
 {
     "images": {
-        "images_folder_rel_path": "/images/ten",
+        "images_folder_rel_path": "/images/dataset",
         "images_chunk": 10,
         "starts_from": 0,
         "limit": 10
@@ -24,6 +24,13 @@
     },
     "optimizer": {
         "passes": []
+    },
+    "runtime": {
+        "onnx": {
+            "intra_op_num_threads": 0,
+            "inter_op_num_threads": 0,
+            "execution_mode": "sequential"
+        }
     }
 
 }

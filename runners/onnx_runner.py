@@ -13,8 +13,27 @@ from PIL import Image
 class ONNXRunner:
 
     def __init__(self, config, topK=10):
+        config = config or {}
+        self.intra_op_num_threads = self._thread_count(
+            config.get("intra_op_num_threads", 0), "intra_op_num_threads"
+        )
+        self.inter_op_num_threads = self._thread_count(
+            config.get("inter_op_num_threads", 0), "inter_op_num_threads"
+        )
+        execution_mode = config.get("execution_mode", "sequential")
+        if execution_mode not in ("sequential", "parallel"):
+            raise ValueError(
+                "runtime.onnx.execution_mode must be 'sequential' or 'parallel'."
+            )
+        self.execution_mode = execution_mode
         self.evaluation_generator = EvaluationGenerator()
         self.topK = topK
+
+    @staticmethod
+    def _thread_count(value, name):
+        if type(value) is not int or value < 0:
+            raise ValueError(f"runtime.onnx.{name} must be a non-negative integer.")
+        return value
 
     def evaluate(self, source_run_obj, target_run_obj, type=["classification"], include_certainties=False, enable_kt_on_one_dim_tensor=True):
         return self.evaluation_generator.generate_objects_comparison(source_run_obj, target_run_obj, type, include_certainties, enable_kt_on_one_dim_tensor)
@@ -72,7 +91,18 @@ class ONNXRunner:
         model_preprocessor = ModelPreprocessor(self.preprocessing_data)
         sess_options = ort.SessionOptions()
         sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
-        ort_sess = ort.InferenceSession(onnx_model.SerializeToString(), providers=['CPUExecutionProvider'])
+        sess_options.intra_op_num_threads = self.intra_op_num_threads
+        sess_options.inter_op_num_threads = self.inter_op_num_threads
+        sess_options.execution_mode = (
+            ort.ExecutionMode.ORT_PARALLEL
+            if self.execution_mode == "parallel"
+            else ort.ExecutionMode.ORT_SEQUENTIAL
+        )
+        ort_sess = ort.InferenceSession(
+            onnx_model.SerializeToString(),
+            sess_options=sess_options,
+            providers=["CPUExecutionProvider"],
+        )
  
         output_data = {}
         count = 0
