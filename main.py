@@ -140,9 +140,24 @@ def main():
     backend = general_config.get("backend", "ort")
     onnx_runtime_config = config.get("runtime", {}).get("onnx", {})
     tvm_runtime_config = config.get("runtime", {}).get("tvm", {})
+    tvm_cache_dir = tvm_runtime_config.get("compiled_cache_dir")
+    if tvm_cache_dir is None:
+        tvm_cache_dir = (
+            Path(script_dir)
+            / hub_config["cache_folder_rel_path"].lstrip("/\\")
+            / "tvm_compiled"
+        )
+    else:
+        tvm_cache_dir = Path(tvm_cache_dir)
+        if not tvm_cache_dir.is_absolute():
+            tvm_cache_dir = Path(script_dir) / tvm_cache_dir
     onnx_runner = ONNXRunner(onnx_runtime_config) if backend != "tvmr" else None
     tvm_runner = (
-        TVMRunner(config.get("tvm", {}), runtime_config=tvm_runtime_config)
+        TVMRunner(
+            config.get("tvm", {}),
+            runtime_config=tvm_runtime_config,
+            compiled_cache_dir=tvm_cache_dir,
+        )
         if backend == "tvmr"
         else None
     )

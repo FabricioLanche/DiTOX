@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 target_dir="$project_root/images/COCO"
 download_url="${COCO_VAL2017_URL:-https://s3.amazonaws.com/images.cocodataset.org/zips/val2017.zip}"
 expected_images=5000
@@ -163,7 +163,7 @@ environment_created=0
 
 printf 'Preparando el catálogo y los modelos ONNX de visión para ejecución offline...\n'
 conda run --no-capture-output --prefix "$environment_prefix" \
-    python "$project_root/scripts/download_vision_models.py" "$project_root"
+    python "$project_root/khipu/download_vision_models.py" "$project_root"
 
 mkdir -p "$target_dir"
 

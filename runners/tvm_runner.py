@@ -1,10 +1,19 @@
+import hashlib
+import inspect
+import json
 import os
+import platform
+import tempfile
+from pathlib import Path
 
 import numpy as np
 from evaluators.evalgenerator import EvaluationGenerator
 
+
 class TVMRunner:
-    def __init__(self, config, topK=10, runtime_config=None):
+    def __init__(
+        self, config, topK=10, runtime_config=None, compiled_cache_dir=None
+    ):
         self.config = config
         runtime_config = runtime_config or {}
         self.num_threads = runtime_config.get("num_threads", 0)
@@ -16,6 +25,9 @@ class TVMRunner:
         self.device = None
         self.tensor = None
         self.input_names = None
+        self.compiled_cache_dir = (
+            Path(compiled_cache_dir) if compiled_cache_dir is not None else None
+        )
 
     @staticmethod
     def get_relax_pipeline(passes=None):
@@ -85,28 +97,18 @@ class TVMRunner:
             os.environ["TVM_NUM_THREADS"] = str(self.num_threads)
 
         import tvm
+        import tvm_ffi
         from tvm import relax
-
-        self.virtual_machine = None
-        self.device = None
-        self.tensor = None
-        self.input_names = None
 
         target_cls = tvm.target.Target
         cpu = tvm.cpu
         self.tensor = tvm.runtime.tensor
-
         target = target_cls("llvm")
-        relax_pipeline = self.get_relax_pipeline(passes)
-        executable = tvm.compile(
-            relax_model,
-            target=target,
-            relax_pipeline=relax_pipeline,
-        )
         device_id = self.config.get("device_id", 0)
         device = cpu(device_id)
-
-        virtual_machine = relax.VirtualMachine(executable, device)
+        self.virtual_machine = None
+        self.device = None
+        self.input_names = None
         input_names = []
         for parameter in relax_model["main"].params:
             name = getattr(parameter, "name_hint", None) or getattr(
@@ -115,6 +117,71 @@ class TVMRunner:
             if name is None:
                 raise RuntimeError("Unable to determine a Relax model input name.")
             input_names.append(name)
+
+        cache_path = None
+        if self.compiled_cache_dir is not None:
+            pass_signature = passes if isinstance(passes, str) else list(passes or [])
+            cache_identity = {
+                "relax_hash": int(tvm_ffi.structural_hash(relax_model)),
+                "passes": pass_signature,
+                "target": str(target),
+                "pipeline": hashlib.sha256(
+                    inspect.getsource(self.get_relax_pipeline).encode("utf-8")
+                ).hexdigest(),
+                "device_id": device_id,
+                "tvm_version": getattr(tvm, "__version__", "unknown"),
+                "machine": platform.machine(),
+                "tvm_num_threads": os.environ.get("TVM_NUM_THREADS", ""),
+            }
+            cache_key = hashlib.sha256(
+                json.dumps(cache_identity, sort_keys=True).encode("utf-8")
+            ).hexdigest()
+            cache_path = self.compiled_cache_dir / f"{cache_key}.so"
+            self.compiled_cache_dir.mkdir(parents=True, exist_ok=True)
+
+            if cache_path.is_file():
+                try:
+                    runtime_module = tvm.runtime.load_module(str(cache_path))
+                    virtual_machine = relax.VirtualMachine(runtime_module, device)
+                    print(f"Loaded cached TVM compilation: {cache_path.name}")
+                    self.virtual_machine = virtual_machine
+                    self.device = device
+                    self.input_names = input_names
+                    return
+                except Exception as error:
+                    print(f"Ignoring invalid TVM compilation cache entry: {error}")
+                    cache_path.unlink(missing_ok=True)
+
+        relax_pipeline = self.get_relax_pipeline(passes)
+        executable = tvm.compile(
+            relax_model,
+            target=target,
+            relax_pipeline=relax_pipeline,
+        )
+
+        runtime_module = executable
+        if cache_path is not None:
+            temporary_path = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    dir=self.compiled_cache_dir,
+                    prefix=f".{cache_path.stem}-",
+                    suffix=".so",
+                    delete=False,
+                ) as temporary_file:
+                    temporary_path = Path(temporary_file.name)
+                temporary_path.unlink()
+                executable.export_library(str(temporary_path))
+                os.replace(temporary_path, cache_path)
+                runtime_module = tvm.runtime.load_module(str(cache_path))
+            except Exception as error:
+                print(f"Could not persist TVM compilation cache: {error}")
+                cache_path.unlink(missing_ok=True)
+            finally:
+                if temporary_path is not None:
+                    temporary_path.unlink(missing_ok=True)
+
+        virtual_machine = relax.VirtualMachine(runtime_module, device)
         self.virtual_machine = virtual_machine
         self.device = device
         self.input_names = input_names

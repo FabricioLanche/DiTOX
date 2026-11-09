@@ -1,5 +1,6 @@
 .venv
 .github/
+result_tvm_tmp/
 tvm_docs.pdf
 models_cache/
 COCO/

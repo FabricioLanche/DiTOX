@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Submit from the project root: sbatch slurm/vision.slurm
-# Or from slurm/: sbatch vision.slurm
+# Submit from the project root: sbatch khipu/vision.slurm
+# Or from khipu/: sbatch vision.slurm
 # Resources can be overridden with sbatch, for example:
-#   sbatch --partition=debug --cpus-per-task=4 --mem=16G --time=01:00:00 slurm/vision.slurm
+#   sbatch --partition=debug --cpus-per-task=4 --mem=16G --time=01:00:00 khipu/vision.slurm
 # Environment overrides:
-#   PROJECT_DIR=/path/to/DiTOX CONFIG_FILE=config_tvm_vision.json CONDA_ENV=ditox-cuda sbatch slurm/vision.slurm
+#   PROJECT_DIR=/path/to/DiTOX CONFIG_FILE=config_tvm_vision.json CONDA_ENV=ditox-cuda sbatch khipu/vision.slurm
 
 #SBATCH --job-name=ditox-vision
 #SBATCH --partition=standard
@@ -172,7 +172,7 @@ print(
 )
 PY
 
-python "$project_dir/scripts/download_vision_models.py" "$project_dir" --check
+python "$project_dir/khipu/download_vision_models.py" "$project_dir" --check
 
 shopt -s nullglob
 coco_images=("$project_dir"/images/COCO/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].jpg)
