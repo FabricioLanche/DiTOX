@@ -1,0 +1,6 @@
+.venv
+result_tvm_tmp/
+tvm_docs.pdf
+models_cache/
+COCO/
+__pycache__
