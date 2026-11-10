@@ -1,0 +1,97 @@
+{
+  "no_dissimilar": 5,
+  "base_models_run": 5,
+  "model_instances_run": 5,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [
+    "AlexNet-int8-12"
+  ],
+  "conversion_errors": {
+    "AlexNet-int8-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: QLinearMatMul, QLinearConv, QLinearAdd')"
+    }
+  },
+  "manifest_models_expected": 130,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [
+    "BERT-Squad-8",
+    "BERT-Squad-10",
+    "BERT-Squad-12",
+    "BERT-Squad-int8-12",
+    "GPT-2-LM-HEAD-10",
+    "RoBERTa-SequenceClassification-9",
+    "T5-encoder-12"
+  ],
+  "manifest_models_selected_by_config": 123,
+  "AlexNet-7": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 1,
+    "run": 1,
+    "all": {
+      "first": "1.0",
+      "top5": "3.4000000000000004",
+      "topK": "8.799999999999999"
+    }
+  },
+  "AlexNet-8": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 1,
+    "run": 1,
+    "all": {
+      "first": "1.0",
+      "top5": "3.4000000000000004",
+      "topK": "8.799999999999999"
+    }
+  },
+  "AlexNet-9": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 1,
+    "run": 1,
+    "all": {
+      "first": "1.0",
+      "top5": "3.4000000000000004",
+      "topK": "8.799999999999999"
+    }
+  },
+  "AlexNet-12": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 1,
+    "run": 1,
+    "all": {
+      "first": "1.0",
+      "top5": "3.4000000000000004",
+      "topK": "8.799999999999999"
+    }
+  },
+  "AlexNet-qdq-12": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 1,
+    "run": 1,
+    "all": {
+      "first": "5.0",
+      "top5": "60.4",
+      "topK": "94.8"
+    }
+  }
+}

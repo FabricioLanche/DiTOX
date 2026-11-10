@@ -1,0 +1,35 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 1,
+  "model_instances_run": 1,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [],
+  "conversion_errors": {},
+  "manifest_models_expected": 130,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [
+    "BERT-Squad-8",
+    "BERT-Squad-10",
+    "BERT-Squad-12",
+    "BERT-Squad-int8-12",
+    "GPT-2-LM-HEAD-10",
+    "RoBERTa-SequenceClassification-9",
+    "T5-encoder-12"
+  ],
+  "manifest_models_selected_by_config": 123,
+  "AlexNet-7": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "first": "0.0",
+      "top5": "0.0",
+      "topK": "0.0"
+    }
+  }
+}
