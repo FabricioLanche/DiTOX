@@ -52,9 +52,7 @@ class ONNXRunner:
         return nodes_found
 
 
-    def execute_onnx_model(self, onnx_model, images_paths, config, image_names=None, print_percentage=True, include_certainties=False):
-        # Execute and return all data.
-        
+    def prepare_onnx_inputs(self, onnx_model, images_paths, config):
         has_symbolic_input = False
         input_dimension = config["input_dimension"]
         if len(input_dimension) == 0:
@@ -70,21 +68,8 @@ class ONNXRunner:
         # Best effort approach for symbolic dimensions.
         # Set library to None, so that the name is utilized for preprocessing selection.
         model_preprocessor = ModelPreprocessor(self.preprocessing_data)
-        sess_options = ort.SessionOptions()
-        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
-        ort_sess = ort.InferenceSession(onnx_model.SerializeToString(), providers=['CPUExecutionProvider'])
- 
-        output_data = {}
-        count = 0
-        images_length = len(images_paths)
-        step = (images_length // 4) if images_length > 10 else images_length
-
+        prepared_inputs = {}
         for img_path in images_paths:
-            
-            if(print_percentage and count % step == 0):
-                print("Complete: " + str((count // step) * 25) + "%")
-
-            count += 1
             img_name = Path(img_path).name
             img = Image.open(img_path)
 
@@ -105,24 +90,49 @@ class ONNXRunner:
             if (len(shape) < len(img.shape)):
                 img = np.squeeze(img)
             
-            # TODO: Refactor. Hack for SSD-MobilenetV1 models.
             input_obj = {input_name: img.astype(np.uint8 if has_symbolic_input else np.float32)}
             if len(onnx_model.graph.input) == 2:
                 input_obj["image_shape"] = [[224.0, 224.0]]
-            output = ort_sess.run(None, input_obj)
+            prepared_inputs[img_name] = input_obj
 
-            if len(output) == 1 and np.array(output).ndim == 3:
-                output = softmax(output)
-                output = np.squeeze(output)
-                ranks = np.argsort(output)[::-1]
-                extracted_ranks = ranks[0:self.topK]
-                if include_certainties:
-                    output_data[img_name] = [(rank, str(output[rank])) for rank in extracted_ranks.tolist()]
-                else:
-                    output_data[img_name] = extracted_ranks.tolist()
-            else:
-                # Return the array in its pure form.
-                output_data[img_name] = output
+        return prepared_inputs
+
+    def format_outputs(self, output, include_certainties=False):
+        if len(output) == 1 and np.array(output).ndim == 3:
+            output = softmax(output)
+            output = np.squeeze(output)
+            ranks = np.argsort(output)[::-1]
+            extracted_ranks = ranks[0:self.topK]
+            if include_certainties:
+                return [(rank, str(output[rank])) for rank in extracted_ranks.tolist()]
+            return extracted_ranks.tolist()
+        return output
+
+    def execute_onnx_model(self, onnx_model, images_paths, config, image_names=None,
+                           print_percentage=True, include_certainties=False,
+                           prepared_inputs=None):
+        if prepared_inputs is None:
+            prepared_inputs = self.prepare_onnx_inputs(onnx_model, images_paths, config)
+
+        sess_options = ort.SessionOptions()
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+        ort_sess = ort.InferenceSession(
+            onnx_model.SerializeToString(),
+            sess_options=sess_options,
+            providers=['CPUExecutionProvider'],
+        )
+
+        output_data = {}
+        images_length = len(images_paths)
+        step = (images_length // 4) if images_length > 10 else images_length
+
+        for count, img_path in enumerate(images_paths):
+            if print_percentage and count % step == 0:
+                print("Complete: " + str((count // step) * 25) + "%")
+
+            img_name = Path(img_path).name
+            output = ort_sess.run(None, prepared_inputs[img_name])
+            output_data[img_name] = self.format_outputs(output, include_certainties)
 
         return output_data
     
