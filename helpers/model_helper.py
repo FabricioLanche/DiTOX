@@ -21,8 +21,8 @@ def load_config(model_path):
     config = json.load(json_data)
     return config
 
-def get_model_path(script_dir, model_obj):
-    return script_dir + "/models_cache/" + model_obj.model_path.replace("/model/", "/model/" + \
+def get_model_path(script_dir, model_obj, cache_folder_rel_path="models_cache"):
+    return script_dir + "/" + cache_folder_rel_path + "/" + model_obj.model_path.replace("/model/", "/model/" + \
             model_obj.metadata["model_sha"] + "_").replace("/models/", "/models/" + \
             model_obj.metadata["model_sha"] + "_").replace("/preproc/", "/preproc/" + \
             model_obj.metadata["model_sha"] + "_")

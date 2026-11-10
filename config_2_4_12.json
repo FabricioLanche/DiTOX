@@ -22,6 +22,10 @@
         "opset_bottom_threshold": 7,
         "cache_folder_rel_path": "models_cache"
     },
+    "runtime": {
+        "backend": "onnx",
+        "target": "llvm"
+    },
     "optimizer": {
         "passes": []
     }

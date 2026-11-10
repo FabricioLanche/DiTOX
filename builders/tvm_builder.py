@@ -1,28 +1,54 @@
-from os import listdir, remove, path, makedirs
-from os.path import isfile, isdir, join, exists, normpath, basename
-import onnx
-import tvm
-import tvm.relay as relay
-from generators import model as model_generator
-
-from pathlib import Path
+from tvm.relax.frontend.onnx import from_onnx
 
 class TVMBuilder:
 
-    def __init__(self, config):
-        self.build = config["build"]
+    @staticmethod
+    def get_default_relax_pipeline():
+        import tvm
+        from tvm import relax
 
-    def build_tvm(self, onnx_path, output_model_path, input_shape):
-        onnx_model = onnx.load(onnx_path)
-        input_name = onnx_model.graph.input[0].name
-        # Input shape is preserved across models.
-        shape_dict = {input_name: input_shape}
-        mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
-        target = tvm.target.Target(self.build["target"], host=self.build["host"])
-        file_name = Path(onnx_path).stem
-        
-        file_path = model_generator.generate_original_model(mod, target, params, output_model_path, file_name=file_name, opt_level=2)
-        return file_path
+        return tvm.transform.Sequential([
+            relax.backend.DispatchSampling(),
+            relax.backend.DispatchSortScan(),
+            relax.transform.LegalizeOps(),
+            relax.transform.ToNonDataflow(),
+            relax.transform.RemovePurityChecking(),
+            relax.transform.CallTIRRewrite(),
+            relax.transform.LowerAllocTensor(),
+            relax.transform.LowerRuntimeBuiltin(),
+            relax.transform.ComputePrimValue(),
+            relax.transform.VMShapeLower(),
+            relax.transform.AttachGlobalSymbol(),
+        ])
 
-    def get_layers_of_type(self, nodes, op_types):
-        return [i for i in range(len([node for node in nodes if node.op_type in op_types]))]
+    @staticmethod
+    def get_optimized_relax_pipeline():
+        from helpers.optimizer_helper import OptimizerHelper
+
+        helper = OptimizerHelper(target="tvm")
+        return helper.get_tvm_relax_pipeline()
+    
+    def build_relax(self, onnx_model, shape_dict=None, dtype_dict=None):
+        return from_onnx(
+            onnx_model,
+            shape_dict=shape_dict,
+            dtype_dict=dtype_dict,
+        )
+
+    def optimize_relax(self, relax_mod, pass_name, passes_list=None):
+        from tvm import relax
+        if pass_name == "all":
+            passes = passes_list or []
+            opt_mod = relax_mod
+            for p in passes:
+                if hasattr(relax.transform, p):
+                    try:
+                        opt_mod = getattr(relax.transform, p)()(opt_mod)
+                    except Exception as e:
+                        print(f"Warning: Relax pass {p} failed: {e}")
+            return opt_mod
+        else:
+            if hasattr(relax.transform, pass_name):
+                return getattr(relax.transform, pass_name)()(relax_mod)
+            raise ValueError(f"Unknown TVM Relax pass: {pass_name}")
+

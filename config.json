@@ -1,6 +1,6 @@
 {
     "images": {
-        "images_folder_rel_path": "/images/ten",
+        "images_folder_rel_path": "/images/dataset",
         "images_chunk": 10,
         "starts_from": 0,
         "limit": 10
@@ -21,6 +21,10 @@
         "tags_of_models_to_consider": ["classification"],
         "opset_bottom_threshold": 7,
         "cache_folder_rel_path": "models_cache"
+    },
+    "runtime": {
+        "backend": "onnx",
+        "target": "llvm"
     },
     "optimizer": {
         "passes": []

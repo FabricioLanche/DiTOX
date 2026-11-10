@@ -1,0 +1,794 @@
+{
+  "source": "DiTOX paper results artifacts; category counts 93 classification, 30 object detection/segmentation, 7 text",
+  "models": [
+    {
+      "model": "AlexNet",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "AlexNet-7"
+    },
+    {
+      "model": "AlexNet",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "AlexNet-8"
+    },
+    {
+      "model": "AlexNet",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "AlexNet-9"
+    },
+    {
+      "model": "AlexNet",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "AlexNet-12"
+    },
+    {
+      "model": "AlexNet-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "AlexNet-int8-12"
+    },
+    {
+      "model": "AlexNet-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "AlexNet-qdq-12"
+    },
+    {
+      "model": "CaffeNet",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "CaffeNet-7"
+    },
+    {
+      "model": "CaffeNet",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "CaffeNet-8"
+    },
+    {
+      "model": "CaffeNet",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "CaffeNet-9"
+    },
+    {
+      "model": "CaffeNet",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "CaffeNet-12"
+    },
+    {
+      "model": "CaffeNet-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "CaffeNet-int8-12"
+    },
+    {
+      "model": "CaffeNet-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "CaffeNet-qdq-12"
+    },
+    {
+      "model": "DenseNet-121",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "DenseNet-121-7"
+    },
+    {
+      "model": "DenseNet-121",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "DenseNet-121-8"
+    },
+    {
+      "model": "DenseNet-121",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "DenseNet-121-9"
+    },
+    {
+      "model": "DenseNet-121-12",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "DenseNet-121-12-12"
+    },
+    {
+      "model": "DenseNet-121-12-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "DenseNet-121-12-int8-12"
+    },
+    {
+      "model": "EfficientNet-Lite4",
+      "opset": 11,
+      "category": "classification",
+      "source_key": "EfficientNet-Lite4-11"
+    },
+    {
+      "model": "EfficientNet-Lite4-int8",
+      "opset": 11,
+      "category": "classification",
+      "source_key": "EfficientNet-Lite4-int8-11"
+    },
+    {
+      "model": "EfficientNet-Lite4-qdq",
+      "opset": 11,
+      "category": "classification",
+      "source_key": "EfficientNet-Lite4-qdq-11"
+    },
+    {
+      "model": "GoogleNet",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "GoogleNet-7"
+    },
+    {
+      "model": "GoogleNet",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "GoogleNet-8"
+    },
+    {
+      "model": "GoogleNet",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "GoogleNet-9"
+    },
+    {
+      "model": "GoogleNet",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "GoogleNet-12"
+    },
+    {
+      "model": "GoogleNet-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "GoogleNet-int8-12"
+    },
+    {
+      "model": "GoogleNet-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "GoogleNet-qdq-12"
+    },
+    {
+      "model": "Inception-1",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "Inception-1-7"
+    },
+    {
+      "model": "Inception-1",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "Inception-1-8"
+    },
+    {
+      "model": "Inception-1",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "Inception-1-9"
+    },
+    {
+      "model": "Inception-1",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "Inception-1-12"
+    },
+    {
+      "model": "Inception-1-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "Inception-1-int8-12"
+    },
+    {
+      "model": "Inception-1-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "Inception-1-qdq-12"
+    },
+    {
+      "model": "Inception-2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "Inception-2-7"
+    },
+    {
+      "model": "Inception-2",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "Inception-2-8"
+    },
+    {
+      "model": "Inception-2",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "Inception-2-9"
+    },
+    {
+      "model": "MNIST",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "MNIST-7"
+    },
+    {
+      "model": "MNIST",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "MNIST-8"
+    },
+    {
+      "model": "MNIST-12",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "MNIST-12-12"
+    },
+    {
+      "model": "MNIST-12-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "MNIST-12-int8-12"
+    },
+    {
+      "model": "MobileNet v2-1.0",
+      "opset": 10,
+      "category": "classification",
+      "source_key": "MobileNet v2-1.0-10"
+    },
+    {
+      "model": "MobileNet v2-1.0-fp32",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "MobileNet v2-1.0-fp32-12"
+    },
+    {
+      "model": "MobileNet v2-1.0-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "MobileNet v2-1.0-int8-12"
+    },
+    {
+      "model": "MobileNet v2-1.0-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "MobileNet v2-1.0-qdq-12"
+    },
+    {
+      "model": "MobileNet v2-7",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "MobileNet v2-7-7"
+    },
+    {
+      "model": "R-CNN ILSVRC13",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "R-CNN ILSVRC13-7"
+    },
+    {
+      "model": "R-CNN ILSVRC13",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "R-CNN ILSVRC13-8"
+    },
+    {
+      "model": "R-CNN ILSVRC13",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "R-CNN ILSVRC13-9"
+    },
+    {
+      "model": "ResNet101",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet101-7"
+    },
+    {
+      "model": "ResNet101-v2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet101-v2-7"
+    },
+    {
+      "model": "ResNet152",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet152-7"
+    },
+    {
+      "model": "ResNet152-v2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet152-v2-7"
+    },
+    {
+      "model": "ResNet18",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet18-7"
+    },
+    {
+      "model": "ResNet18-v2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet18-v2-7"
+    },
+    {
+      "model": "ResNet34",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet34-7"
+    },
+    {
+      "model": "ResNet34-v2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet34-v2-7"
+    },
+    {
+      "model": "ResNet50",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet50-7"
+    },
+    {
+      "model": "ResNet50-caffe2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet50-caffe2-7"
+    },
+    {
+      "model": "ResNet50-caffe2",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "ResNet50-caffe2-8"
+    },
+    {
+      "model": "ResNet50-caffe2",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "ResNet50-caffe2-9"
+    },
+    {
+      "model": "ResNet50-fp32",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ResNet50-fp32-12"
+    },
+    {
+      "model": "ResNet50-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ResNet50-int8-12"
+    },
+    {
+      "model": "ResNet50-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ResNet50-qdq-12"
+    },
+    {
+      "model": "ResNet50-v2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ResNet50-v2-7"
+    },
+    {
+      "model": "ShuffleNet-v1",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ShuffleNet-v1-7"
+    },
+    {
+      "model": "ShuffleNet-v1",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "ShuffleNet-v1-8"
+    },
+    {
+      "model": "ShuffleNet-v1",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "ShuffleNet-v1-9"
+    },
+    {
+      "model": "ShuffleNet-v2",
+      "opset": 10,
+      "category": "classification",
+      "source_key": "ShuffleNet-v2-10"
+    },
+    {
+      "model": "ShuffleNet-v2-fp32",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ShuffleNet-v2-fp32-12"
+    },
+    {
+      "model": "ShuffleNet-v2-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ShuffleNet-v2-int8-12"
+    },
+    {
+      "model": "ShuffleNet-v2-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ShuffleNet-v2-qdq-12"
+    },
+    {
+      "model": "SqueezeNet 1.0",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "SqueezeNet 1.0-7"
+    },
+    {
+      "model": "SqueezeNet 1.0",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "SqueezeNet 1.0-8"
+    },
+    {
+      "model": "SqueezeNet 1.0",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "SqueezeNet 1.0-9"
+    },
+    {
+      "model": "SqueezeNet 1.0",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "SqueezeNet 1.0-12"
+    },
+    {
+      "model": "SqueezeNet 1.0-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "SqueezeNet 1.0-int8-12"
+    },
+    {
+      "model": "SqueezeNet 1.0-qdq",
+      "opset": 13,
+      "category": "classification",
+      "source_key": "SqueezeNet 1.0-qdq-13"
+    },
+    {
+      "model": "SqueezeNet 1.1",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "SqueezeNet 1.1-7"
+    },
+    {
+      "model": "VGG 16",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "VGG 16-7"
+    },
+    {
+      "model": "VGG 16-bn",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "VGG 16-bn-7"
+    },
+    {
+      "model": "VGG 16-fp32",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "VGG 16-fp32-12"
+    },
+    {
+      "model": "VGG 16-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "VGG 16-int8-12"
+    },
+    {
+      "model": "VGG 16-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "VGG 16-qdq-12"
+    },
+    {
+      "model": "VGG 19",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "VGG 19-7"
+    },
+    {
+      "model": "VGG 19-bn",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "VGG 19-bn-7"
+    },
+    {
+      "model": "VGG 19-caffe2",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "VGG 19-caffe2-7"
+    },
+    {
+      "model": "VGG 19-caffe2",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "VGG 19-caffe2-8"
+    },
+    {
+      "model": "VGG 19-caffe2",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "VGG 19-caffe2-9"
+    },
+    {
+      "model": "ZFNet-512",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "ZFNet-512-7"
+    },
+    {
+      "model": "ZFNet-512",
+      "opset": 8,
+      "category": "classification",
+      "source_key": "ZFNet-512-8"
+    },
+    {
+      "model": "ZFNet-512",
+      "opset": 9,
+      "category": "classification",
+      "source_key": "ZFNet-512-9"
+    },
+    {
+      "model": "ZFNet-512",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ZFNet-512-12"
+    },
+    {
+      "model": "ZFNet-512-int8",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ZFNet-512-int8-12"
+    },
+    {
+      "model": "ZFNet-512-qdq",
+      "opset": 12,
+      "category": "classification",
+      "source_key": "ZFNet-512-qdq-12"
+    },
+    {
+      "model": "FCN ResNet-101",
+      "opset": 11,
+      "category": "object detection segmentation",
+      "source_key": "FCN ResNet-101-11"
+    },
+    {
+      "model": "FCN ResNet-50",
+      "opset": 11,
+      "category": "object detection segmentation",
+      "source_key": "FCN ResNet-50-11"
+    },
+    {
+      "model": "FCN ResNet-50",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "FCN ResNet-50-12"
+    },
+    {
+      "model": "FCN ResNet-50-int8",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "FCN ResNet-50-int8-12"
+    },
+    {
+      "model": "FCN ResNet-50-qdq",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "FCN ResNet-50-qdq-12"
+    },
+    {
+      "model": "Faster R-CNN R-50-FPN",
+      "opset": 10,
+      "category": "object detection segmentation",
+      "source_key": "Faster R-CNN R-50-FPN-10"
+    },
+    {
+      "model": "Faster R-CNN R-50-FPN-fp32",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "Faster R-CNN R-50-FPN-fp32-12"
+    },
+    {
+      "model": "Faster R-CNN R-50-FPN-int8",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "Faster R-CNN R-50-FPN-int8-12"
+    },
+    {
+      "model": "Faster R-CNN R-50-FPN-qdq",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "Faster R-CNN R-50-FPN-qdq-12"
+    },
+    {
+      "model": "Mask R-CNN R-50-FPN",
+      "opset": 10,
+      "category": "object detection segmentation",
+      "source_key": "Mask R-CNN R-50-FPN-10"
+    },
+    {
+      "model": "Mask R-CNN R-50-FPN-fp32",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "Mask R-CNN R-50-FPN-fp32-12"
+    },
+    {
+      "model": "Mask R-CNN R-50-FPN-int8",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "Mask R-CNN R-50-FPN-int8-12"
+    },
+    {
+      "model": "Mask R-CNN R-50-FPN-qdq",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "Mask R-CNN R-50-FPN-qdq-12"
+    },
+    {
+      "model": "RetinaNet (ResNet101 backbone)",
+      "opset": 9,
+      "category": "object detection segmentation",
+      "source_key": "RetinaNet (ResNet101 backbone)-9"
+    },
+    {
+      "model": "SSD",
+      "opset": 10,
+      "category": "object detection segmentation",
+      "source_key": "SSD-10"
+    },
+    {
+      "model": "SSD",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "SSD-12"
+    },
+    {
+      "model": "SSD-MobilenetV1",
+      "opset": 10,
+      "category": "object detection segmentation",
+      "source_key": "SSD-MobilenetV1-10"
+    },
+    {
+      "model": "SSD-MobilenetV1-12",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "SSD-MobilenetV1-12-12"
+    },
+    {
+      "model": "SSD-MobilenetV1-12-int8",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "SSD-MobilenetV1-12-int8-12"
+    },
+    {
+      "model": "SSD-MobilenetV1-12-qdq",
+      "opset": 13,
+      "category": "object detection segmentation",
+      "source_key": "SSD-MobilenetV1-12-qdq-13"
+    },
+    {
+      "model": "SSD-int8",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "SSD-int8-12"
+    },
+    {
+      "model": "SSD-qdq",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "SSD-qdq-12"
+    },
+    {
+      "model": "Tiny YOLOv2",
+      "opset": 7,
+      "category": "object detection segmentation",
+      "source_key": "Tiny YOLOv2-7"
+    },
+    {
+      "model": "Tiny YOLOv2",
+      "opset": 8,
+      "category": "object detection segmentation",
+      "source_key": "Tiny YOLOv2-8"
+    },
+    {
+      "model": "Tiny YOLOv3",
+      "opset": 11,
+      "category": "object detection segmentation",
+      "source_key": "Tiny YOLOv3-11"
+    },
+    {
+      "model": "YOLOv2",
+      "opset": 9,
+      "category": "object detection segmentation",
+      "source_key": "YOLOv2-9"
+    },
+    {
+      "model": "YOLOv3",
+      "opset": 10,
+      "category": "object detection segmentation",
+      "source_key": "YOLOv3-10"
+    },
+    {
+      "model": "YOLOv3-12",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "YOLOv3-12-12"
+    },
+    {
+      "model": "YOLOv3-12-int8",
+      "opset": 12,
+      "category": "object detection segmentation",
+      "source_key": "YOLOv3-12-int8-12"
+    },
+    {
+      "model": "YOLOv4",
+      "opset": 11,
+      "category": "object detection segmentation",
+      "source_key": "YOLOv4-11"
+    },
+    {
+      "model": "BERT-Squad",
+      "opset": 8,
+      "category": "text",
+      "source_key": "BERT-Squad-8"
+    },
+    {
+      "model": "BERT-Squad",
+      "opset": 10,
+      "category": "text",
+      "source_key": "BERT-Squad-10"
+    },
+    {
+      "model": "BERT-Squad",
+      "opset": 12,
+      "category": "text",
+      "source_key": "BERT-Squad-12"
+    },
+    {
+      "model": "BERT-Squad-int8",
+      "opset": 12,
+      "category": "text",
+      "source_key": "BERT-Squad-int8-12"
+    },
+    {
+      "model": "GPT-2-LM-HEAD",
+      "opset": 10,
+      "category": "text",
+      "source_key": "GPT-2-LM-HEAD-10"
+    },
+    {
+      "model": "RoBERTa-SequenceClassification",
+      "opset": 9,
+      "category": "text",
+      "source_key": "RoBERTa-SequenceClassification-9"
+    },
+    {
+      "model": "T5-encoder",
+      "opset": 12,
+      "category": "text",
+      "source_key": "T5-encoder-12"
+    }
+  ],
+  "source_artifacts": [
+    "results/classification/basic_model_comparisons - classification.js",
+    "results/detection_full/object_detection_model_comparisons_chunk_0_500.json",
+    "results/text/**/**/*.json"
+  ],
+  "notes": [
+    "Recovered 130 unique model-opset pairs: 93 classification, 30 object detection/segmentation, and 7 text.",
+    "The paper states opsets 7-12, but two archived result keys end in opset 13: SqueezeNet 1.0-qdq-13 and SSD-MobilenetV1-12-qdq-13. They are preserved because they occur in the raw result artifacts and preserve the reported category counts."
+  ]
+}
