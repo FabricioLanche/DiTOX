@@ -9,6 +9,7 @@ if str(project_root) not in sys.path:
 
 from src.configs.config import load_pipeline_config
 from src.model_orchestrator.model_orchestrator import ModelOrchestrator
+from src.model_orchestrator.tvm_builder import TVMBuilder
 from src.dispatchers import BackendDispatcher, ModelComparisonDispatcher
 from src.reports import ReportManager
 
@@ -31,7 +32,26 @@ def main():
     report_manager = ReportManager(
         script_dir, general_config["report_file_base_rel_path"]
     )
-    
+
+    tvm_builder = None
+    if run_config.backend == "tvmr":
+        runtime_tvm_config = run_config.runtime.get("tvm", {})
+        compiled_cache_dir = (
+            runtime_tvm_config.get("compiled_cache_dir")
+            or run_config.tvm.get("compiled_cache_dir")
+        )
+        if compiled_cache_dir is None:
+            compiled_cache_dir = (
+                Path(script_dir)
+                / hub_config["cache_folder_rel_path"].lstrip("/\\")
+                / "tvm_compiled"
+            )
+        else:
+            compiled_cache_dir = Path(compiled_cache_dir).expanduser()
+            if not compiled_cache_dir.is_absolute():
+                compiled_cache_dir = Path(script_dir) / compiled_cache_dir
+        tvm_builder = TVMBuilder(compiled_cache_dir)
+
     backend_dispatcher = BackendDispatcher(run_config)
     comparison_dispatcher = ModelComparisonDispatcher()
     onnx_runner = backend_dispatcher.onnx_runner
@@ -42,6 +62,7 @@ def main():
         hub_config,
         script_dir,
         check_prob_models=check_prob_models,
+        tvm_builder=tvm_builder,
     )
     manifest_categories = model_orchestrator.manifest_categories
     manifest_missing_models = model_orchestrator.manifest_missing_models
@@ -89,11 +110,13 @@ def main():
             model_name = model_data["model_name"]
             model_name_opset = model_data["model_name_opset"]
             tags = model_data["tags"]
-            first_input = model_data["first_input"]
-            model_shape = model_data["model_shape"]
             model_config = model_data["model_config"]
             model_path = model_data["model_path"]
             model = model_data["model"]
+            relax_model = model_data["relax_model"]
+            relax_input_names = model_data["relax_input_names"]
+            base_executable = model_data["base_executable"]
+            tvm_build_error = model_data["tvm_build_error"]
             original_hash = model_data["original_hash"]
             opt_model_path = model_data["opt_model_path"]
 
@@ -104,23 +127,23 @@ def main():
                 passes = (
                     optimizer_config["passes"]
                     if optimizer_config["passes"]
-                    else backend_dispatcher.optimizer_helper.get_optimizer_passes()
+                    else backend_dispatcher.optimizer.get_optimizer_passes()
                 )
 
             print("Running original model...")
             print(model_path)
-            base_model_out = None
-            base_relax_mod = None
+            base_relax_mod = relax_model if backend_dispatcher.is_tvm else None
 
             try:
-                base_model_out, base_relax_mod = backend_dispatcher.run_baseline(
+                base_model_out = backend_dispatcher.run_baseline(
                     model,
                     tags,
-                    first_input,
-                    model_shape,
                     images_paths,
                     model_config,
                     include_certainties,
+                    base_executable=base_executable,
+                    relax_input_names=relax_input_names,
+                    tvm_build_error=tvm_build_error,
                 )
             except Exception as e:
                 print(e)
@@ -159,10 +182,7 @@ def main():
                         current_pass,
                         base_relax_mod=base_relax_mod,
                         base_model_out=base_model_out,
-                        model=model,
                         tags=tags,
-                        first_input=first_input,
-                        model_shape=model_shape,
                         images_paths=images_paths,
                         model_config=model_config,
                         include_certainties=include_certainties,
@@ -173,7 +193,7 @@ def main():
                         model_name_opset=model_name_opset,
                         model_comparisons=model_comparisons,
                         enable_kt_on_one_dim_tensor=enable_kt_on_one_dim_tensor,
-                        run_individual_passes=run_individual_passes,
+                        relax_input_names=relax_input_names,
                     )
                 )
 

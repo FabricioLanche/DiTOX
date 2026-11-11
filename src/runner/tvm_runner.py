@@ -1,6 +1,5 @@
 import numpy as np
 from src.metric_comparison.evaluators.evalgenerator import EvaluationGenerator
-from src.runner.tvm_builder import TVMBuilder
 
 class TVMRunner:
     def __init__(self, config, topK=10):
@@ -22,50 +21,22 @@ class TVMRunner:
             enable_kt_on_one_dim_tensor,
         )
 
-    def compile_tvm_model(self, relax_model, optimized=False, relax_pipeline=None):
+    def _load_executable(self, executable, input_names):
         import tvm
         from tvm import relax
 
-        self.virtual_machine = None
-        self.device = None
-        self.tensor = None
-        self.input_names = None
-
-        target_cls = tvm.target.Target
-        cpu = tvm.cpu
+        device_id = self.config.get("device_id", 0)
+        device = tvm.cpu(device_id)
         self.tensor = tvm.runtime.tensor
 
-        target = target_cls("llvm")
-        if relax_pipeline is None:
-            relax_pipeline = (
-                TVMBuilder.get_default_relax_pipeline()
-                if not optimized
-                else TVMBuilder.get_optimized_relax_pipeline()
-            )
-        executable = tvm.compile(
-            relax_model,
-            target=target,
-            relax_pipeline=relax_pipeline,
-        )
-        device_id = self.config.get("device_id", 0)
-        device = cpu(device_id)
-
         virtual_machine = relax.VirtualMachine(executable, device)
-        input_names = []
-        for parameter in relax_model["main"].params:
-            name = getattr(parameter, "name_hint", None) or getattr(
-                parameter, "name", None
-            )
-            if name is None:
-                raise RuntimeError("Unable to determine a Relax model input name.")
-            input_names.append(name)
         self.virtual_machine = virtual_machine
         self.device = device
         self.input_names = input_names
 
     def execute_tvm_model(self, inputs):
         if self.virtual_machine is None:
-            raise RuntimeError("Compile a Relax model before executing it.")
+            raise RuntimeError("Load a TVM executable before executing it.")
 
         if isinstance(inputs, dict):
             missing_inputs = [name for name in self.input_names if name not in inputs]
@@ -101,19 +72,14 @@ class TVMRunner:
             for output in output_values
         ]
 
-    def execute_relax_model(self, relax_model, images_paths, config, print_percentage=True,
-                            include_certainties=False, optimized=False,
-                            relax_pipeline=None):
+    def execute_tvm_executable(self, executable, images_paths, config, input_names,
+                               print_percentage=True, include_certainties=False):
         from pathlib import Path
         from PIL import Image
         from scipy.special import softmax
         from src.runner.preprocessing.model_preprocessor import ModelPreprocessor
 
-        self.compile_tvm_model(
-            relax_model,
-            optimized=optimized,
-            relax_pipeline=relax_pipeline,
-        )
+        self._load_executable(executable, input_names)
 
         input_dimension = config.get("input_dimension", [224, 224])
         if len(input_dimension) == 0:
@@ -132,7 +98,9 @@ class TVMRunner:
         images_length = len(images_paths)
         step = (images_length // 4) if images_length > 10 else images_length
 
-        input_name = config.get("input_name", self.input_names[0] if self.input_names else "data")
+        input_name = config.get(
+            "input_name", self.input_names[0] if self.input_names else "data"
+        )
 
         for img_path in images_paths:
             if print_percentage and step > 0 and count % step == 0:

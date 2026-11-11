@@ -19,7 +19,7 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from src.configs.config import load_pipeline_config
-from src.optimizer.optimizer_helper import OptimizerHelper
+from src.optimizer.onnx_optimizer import ONNXOptimizer
 from src.metric_comparison.extractors.yolov2_extractor import YOLOV2Extractor
 from src.metric_comparison.extractors.yolov3_extractor import YOLOV3Extractor
 from src.metric_comparison.evaluators.object_detection import ObjectDetectionEvaluator
@@ -84,7 +84,7 @@ def main():
     all_models = hub.list_models(tags=["text"])
     hub.set_dir(script_dir + "/models_cache")
 
-    opt_helper = OptimizerHelper()
+    onnx_optimizer = ONNXOptimizer()
     
     model_comparisons_file = script_dir + "/text/Top2Prediction_GPT-2_chunk_0_500.json"
     onnx_runner = ONNXRunner({})
@@ -222,7 +222,7 @@ def main():
             opt_model_path = model_path.replace(".onnx", "_opt.onnx")
 
             passes = optimizer_config["passes"] if len(optimizer_config["passes"]) != 0 else \
-                opt_helper.get_optimizer_passes()
+                onnx_optimizer.get_optimizer_passes()
 
             # TODO: Cache!
             print("Running original model...")

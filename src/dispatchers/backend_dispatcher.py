@@ -1,12 +1,9 @@
 import hashlib
-import subprocess
-
 import onnx
 import numpy as np
 
-from src.optimizer.optimizer_helper import OptimizerHelper
+from src.optimizer import ONNXOptimizer, TVMOptimizer
 from src.runner.onnx_runner import ONNXRunner
-from src.runner.tvm_builder import TVMBuilder
 from src.runner.tvm_runner import TVMRunner
 
 
@@ -21,11 +18,10 @@ class BackendDispatcher:
     def __init__(self, run_config):
         self.backend = run_config.backend
         self.onnx_runner = ONNXRunner({})
+        self.tvm_optimizer = TVMOptimizer() if self.is_tvm else None
+        self.onnx_optimizer = ONNXOptimizer()
+        self.optimizer = self.tvm_optimizer if self.is_tvm else self.onnx_optimizer
         self.tvm_runner = TVMRunner(run_config.tvm) if self.is_tvm else None
-        self.tvm_builder = TVMBuilder() if self.is_tvm else None
-        self.optimizer_helper = OptimizerHelper(
-            target="tvm" if self.is_tvm else "onnx"
-        )
 
     @property
     def is_tvm(self):
@@ -44,27 +40,28 @@ class BackendDispatcher:
         self,
         model,
         tags,
-        first_input,
-        model_shape,
         images_paths,
         model_config,
         include_certainties,
+        base_executable=None,
+        relax_input_names=None,
+        tvm_build_error=None,
     ):
         if "text" in tags:
             print("Text models not supported on this version.")
-            return None, None
+            return None
 
         if self.is_tvm:
-            relax_model = self.tvm_builder.build_relax(
-                model, {first_input["name"]: model_shape}
-            )
-            output = self.tvm_runner.execute_relax_model(
-                relax_model,
+            if tvm_build_error is not None:
+                raise tvm_build_error
+            output = self.tvm_runner.execute_tvm_executable(
+                base_executable,
                 images_paths,
-                config=model_config,
+                model_config,
+                input_names=relax_input_names,
                 include_certainties=include_certainties,
             )
-            return output, relax_model
+            return output
 
         output = self.onnx_runner.execute_onnx_model(
             model,
@@ -72,17 +69,14 @@ class BackendDispatcher:
             config=model_config,
             include_certainties=include_certainties,
         )
-        return output, None
+        return output
     def run_optimization_pass(
         self,
         current_pass,
         *,
         base_relax_mod,
         base_model_out,
-        model,
         tags,
-        first_input,
-        model_shape,
         images_paths,
         model_config,
         include_certainties,
@@ -93,7 +87,7 @@ class BackendDispatcher:
         model_name_opset,
         model_comparisons,
         enable_kt_on_one_dim_tensor,
-        run_individual_passes,
+        relax_input_names=None,
     ):
         conversion_failed = False
         opt_model_out = None
@@ -101,15 +95,20 @@ class BackendDispatcher:
             try:
                 if current_pass == "all":
                     print("Running optimized TVM model. Pass: all")
-                    opt_model_out = self.tvm_runner.execute_relax_model(
+                    optimized_pipeline = self.tvm_optimizer.get_optimized_pipeline()
+                    optimized_executable = self.tvm_optimizer.generate_executable(
                         base_relax_mod,
+                        optimized_pipeline,
+                    )
+                    opt_model_out = self.tvm_runner.execute_tvm_executable(
+                        optimized_executable,
                         images_paths,
-                        config=model_config,
+                        model_config,
+                        input_names=relax_input_names,
                         include_certainties=include_certainties,
-                        optimized=True,
                     )
                 else:
-                    required_dependencies = self.optimizer_helper.get_tvm_isolation_dependencies(
+                    required_dependencies = self.tvm_optimizer.get_isolation_dependencies(
                         current_pass
                     )
                     included_dependencies = []
@@ -118,22 +117,22 @@ class BackendDispatcher:
 
                     for dependency in required_dependencies:
                         included_dependencies.append(dependency)
-                        dependency_mod = self.tvm_builder.build_relax(
-                            model,
-                            {first_input["name"]: model_shape},
-                        )
-                        dependency_pipeline = self.optimizer_helper.get_tvm_isolation_pipeline(
+                        dependency_pipeline = self.tvm_optimizer.get_isolation_pipeline(
                             current_pass,
                             dependencies=included_dependencies,
                             include_optimization=False,
                         )
                         try:
-                            dependency_out = self.tvm_runner.execute_relax_model(
-                                dependency_mod,
+                            dependency_executable = self.tvm_optimizer.generate_executable(
+                                base_relax_mod,
+                                dependency_pipeline,
+                            )
+                            dependency_out = self.tvm_runner.execute_tvm_executable(
+                                dependency_executable,
                                 images_paths,
-                                config=model_config,
+                                model_config,
+                                input_names=relax_input_names,
                                 include_certainties=include_certainties,
-                                relax_pipeline=dependency_pipeline,
                             )
                         except Exception as error:
                             dependency_failure = {
@@ -195,21 +194,21 @@ class BackendDispatcher:
                         print(
                             f"Running isolated TVM optimization: {current_pass}"
                         )
-                        candidate_mod = self.tvm_builder.build_relax(
-                            model,
-                            {first_input["name"]: model_shape},
-                        )
-                        candidate_pipeline = self.optimizer_helper.get_tvm_isolation_pipeline(
+                        candidate_pipeline = self.tvm_optimizer.get_isolation_pipeline(
                             current_pass,
                             dependencies=required_dependencies,
                             include_optimization=True,
                         )
-                        opt_model_out = self.tvm_runner.execute_relax_model(
-                            candidate_mod,
+                        candidate_executable = self.tvm_optimizer.generate_executable(
+                            base_relax_mod,
+                            candidate_pipeline,
+                        )
+                        opt_model_out = self.tvm_runner.execute_tvm_executable(
+                            candidate_executable,
                             images_paths,
-                            config=model_config,
+                            model_config,
+                            input_names=relax_input_names,
                             include_certainties=include_certainties,
-                            relax_pipeline=candidate_pipeline,
                         )
             except Exception as e:
                 print(f"TVM Relax pass {current_pass} error: {e}")
@@ -222,25 +221,18 @@ class BackendDispatcher:
                 conversion_failed = True
         else:
             # --- ORT branch ---
-            try:
-                if not run_individual_passes:
-                    p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-                    current_pass = "all"
-                else:
-                    p = subprocess.Popen(['python3 -m onnxoptimizer ' + model_path + " " + opt_model_path + " -p " + current_pass], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-
-                (output, err) = p.communicate()  
-                p.wait()
-                if p.returncode != 0:
-                    print(output)
-                    if model_name_opset not in model_comparisons["conversion_errors"]:
-                        model_comparisons["conversion_errors"][model_name_opset] = {}
-                    model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(output)
-                    model_comparisons["failed_conversions_no"] += 1
-                    conversion_failed = True
-
-            except subprocess.CalledProcessError as e:
-                print('Fatal error: code={}, out="{}"'.format(e.returncode, e.output))
+            result = self.onnx_optimizer.optimize_model(
+                model_path,
+                opt_model_path,
+                optimization=current_pass,
+            )
+            if result.returncode != 0:
+                print(result.stdout)
+                if model_name_opset not in model_comparisons["conversion_errors"]:
+                    model_comparisons["conversion_errors"][model_name_opset] = {}
+                model_comparisons["conversion_errors"][model_name_opset][current_pass] = repr(result.stdout)
+                model_comparisons["failed_conversions_no"] += 1
+                conversion_failed = True
 
             opt_hash = None
             try:
