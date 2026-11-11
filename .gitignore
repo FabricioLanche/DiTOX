@@ -2,5 +2,5 @@
 result_tvm_tmp/
 tvm_docs.pdf
 models_cache/
-COCO/
+results/
 __pycache__

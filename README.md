@@ -13,7 +13,7 @@ Using DiTOX, we were able to discover 15 bugs in the ONNX Optimizer, of which 14
 
 The architecture of DiTOX can be observed below:
 
-![DiTOX](images/DiTOX.png)
+![DiTOX](docs/DiTOX.png)
 
 ## Lines of code:
 ```
