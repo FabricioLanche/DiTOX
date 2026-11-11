@@ -28,13 +28,16 @@ class ModelOrchestrator:
         hub_config,
         script_dir,
         check_prob_models=False,
+        tvm_builder=None,
     ):
         self.general_config = general_config
         self.hub_config = hub_config
         self.script_dir = Path(script_dir)
         self.check_prob_models = check_prob_models
+        self.tvm_builder = tvm_builder
 
         self.manifest_categories = None
+        self.manifest_source_keys = {}
         self.manifest_missing_models = []
         self.manifest_excluded_by_config = []
 
@@ -51,10 +54,14 @@ class ModelOrchestrator:
         with manifest_path.open("r", encoding="utf-8") as manifest_stream:
             manifest = json.load(manifest_stream)
 
-        self.manifest_categories = {
-            (item["model"], int(item["opset"])): item["category"]
-            for item in manifest["models"]
-        }
+        self.manifest_categories = {}
+        self.manifest_source_keys = {}
+        for item in manifest["models"]:
+            model_id = (item["model"], int(item["opset"]))
+            self.manifest_categories[model_id] = item["category"]
+            self.manifest_source_keys[model_id] = item.get(
+                "source_key", f"{item['model']}-{item['opset']}"
+            )
         included_categories = set(
             self.hub_config.get("tags_of_models_to_consider", [])
         )
@@ -157,6 +164,27 @@ class ModelOrchestrator:
             model = hub.load(model_name, opset=model_opset)
             with open(model_path, "rb") as model_file:
                 original_hash = hashlib.md5(model_file.read()).hexdigest()
+            source_key = self.manifest_source_keys.get(
+                (model_name, model_opset), model_name_opset
+            )
+
+            relax_model = None
+            relax_input_names = None
+            base_executable = None
+            tvm_build_error = None
+            if self.tvm_builder is not None and "text" not in tags:
+                try:
+                    relax_model, relax_input_names, base_executable = (
+                        self.tvm_builder.build_base_artifacts(
+                            model,
+                            source_key=source_key,
+                            model_hash=original_hash,
+                            shape_dict={first_input["name"]: model_shape},
+                        )
+                    )
+                except Exception as error:
+                    tvm_build_error = error
+                    print(f"Could not prepare base TVM executable for {source_key}: {error}")
 
             print("Model Number: " + str(model_no))
             print("Model Name: " + model_name)
@@ -164,17 +192,17 @@ class ModelOrchestrator:
             print(first_input["shape"])
 
             yield {
-                "model_no": model_no,
-                "model_obj": model_obj,
                 "model_name": model_name,
-                "model_opset": model_opset,
                 "model_name_opset": model_name_opset,
+                "source_key": source_key,
                 "tags": tags,
-                "first_input": first_input,
-                "model_shape": model_shape,
                 "model_config": model_config,
                 "model_path": model_path,
                 "model": model,
+                "relax_model": relax_model,
+                "relax_input_names": relax_input_names,
+                "base_executable": base_executable,
+                "tvm_build_error": tvm_build_error,
                 "original_hash": original_hash,
                 "opt_model_path": model_path.replace(".onnx", "_opt.onnx"),
             }
