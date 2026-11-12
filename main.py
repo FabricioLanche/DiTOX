@@ -61,7 +61,7 @@ def _discover_image_paths(images_folder, pipeline_trace):
     return image_paths
 
 
-def _run_parallel_vision_models(
+def _run_parallel_models(
     model_specs,
     batch_states,
     *,
@@ -721,12 +721,7 @@ def main():
     threads_per_worker = run_config.runtime.get("tvm", {}).get(
         "threads_per_worker", 0
     )
-    parallel_vision = (
-        run_config.backend == "tvmr"
-        and model_workers > 1
-        and "text" not in hub_config.get("tags", [])
-        and all_task_samples is None
-    )
+    parallel_models = model_workers > 1
     checkpoint_reports = (
         checkpoint_manager.reports_for(
             [state["report_path"] for state in batch_states]
@@ -735,22 +730,20 @@ def main():
         else None
     )
 
-    if batch_states and parallel_vision:
+    if batch_states and parallel_models:
         problematic_union = None
         if check_prob_models:
             problematic_union = set().union(
                 *(state["problematic_models"] for state in batch_states)
             )
-        model_specs = [
-            model_spec
-            for model_spec in model_orchestrator.get_models(
+        model_specs = list(
+            model_orchestrator.get_models(
                 problematic_union,
                 metadata_only=True,
                 exclude_models=completed_models,
             )
-            if "text" not in model_spec["tags"]
-        ]
-        _run_parallel_vision_models(
+        )
+        _run_parallel_models(
             model_specs,
             batch_states,
             run_config=run_config,
