@@ -1,7 +1,52 @@
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+
+def _env_int(name, minimum):
+    """Return an optional integer from the environment, validating its range."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return None
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer, got {raw!r}.") from exc
+    if value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}, got {value}.")
+    return value
+
+
+def _apply_runtime_overrides(data):
+    """Overlay runtime.tvm values with DITOX_* environment variables.
+
+    This keeps the JSON configs as the source of truth while allowing Slurm
+    scripts to tune workers/threads per job without rewriting files.
+    """
+    model_workers = _env_int("DITOX_MODEL_WORKERS", 1)
+    threads_per_worker = _env_int("DITOX_THREADS_PER_WORKER", 0)
+    if model_workers is None and threads_per_worker is None:
+        return data
+
+    runtime = data.get("runtime")
+    if runtime is None:
+        runtime = {}
+        data["runtime"] = runtime
+    if not isinstance(runtime, dict):
+        return data
+    tvm_runtime = runtime.get("tvm")
+    if tvm_runtime is None:
+        tvm_runtime = {}
+        runtime["tvm"] = tvm_runtime
+    if not isinstance(tvm_runtime, dict):
+        return data
+    if model_workers is not None:
+        tvm_runtime["model_workers"] = model_workers
+    if threads_per_worker is not None:
+        tvm_runtime["threads_per_worker"] = threads_per_worker
+    return data
 
 
 @dataclass(frozen=True)
@@ -36,6 +81,8 @@ def load_pipeline_config(config_path=None):
 
     if not isinstance(data, dict):
         raise ValueError(f"Pipeline configuration must be a JSON object: {path}")
+
+    data = _apply_runtime_overrides(data)
 
     required_sections = ("images", "general", "hub", "optimizer")
     missing_sections = [section for section in required_sections if section not in data]

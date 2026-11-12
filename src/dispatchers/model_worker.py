@@ -6,21 +6,82 @@ import tempfile
 from pathlib import Path
 
 
-def _load_vision_model(model_spec, hub_cache_dir):
-    from onnx import hub
+def _model_hash(model, model_path):
+    path = Path(model_path)
+    if path.is_file():
+        return hashlib.md5(path.read_bytes()).hexdigest()
+    return hashlib.md5(model.SerializeToString()).hexdigest()
 
+
+def _load_model(model_spec, project_root, run_config, hub_cache_dir):
+    from onnx import hub
+    import onnx
+
+    from src.model_orchestrator.model_orchestrator import load_text_model
+
+    tags = model_spec["tags"]
     hub.set_dir(str(hub_cache_dir))
-    model = hub.load(model_spec["model_name"], opset=model_spec["opset"])
-    model_path = Path(model_spec["model_path"])
-    if model_path.is_file():
-        model_hash = hashlib.md5(model_path.read_bytes()).hexdigest()
+    if model_spec.get("external"):
+        model_path = Path(model_spec["model_path"])
+        model = onnx.load(str(model_path))
+    elif "text" in tags:
+        model, model_path = load_text_model(
+            project_root,
+            run_config.hub,
+            model_spec["model_name"],
+            model_spec["opset"],
+        )
+        model_path = Path(model_path)
     else:
-        model_hash = hashlib.md5(model.SerializeToString()).hexdigest()
-    return model, model_path, model_hash
+        model = hub.load(model_spec["model_name"], opset=model_spec["opset"])
+        model_path = Path(model_spec["model_path"])
+    return model, model_path
+
+
+def _build_tvm_artifacts(
+    model,
+    model_spec,
+    original_hash,
+    run_config,
+    project_root,
+    hub_cache_dir,
+    pipeline_trace,
+):
+    if run_config.backend != "tvmr" or "text" in model_spec["tags"]:
+        return None, None, None, None
+
+    from src.model_orchestrator.tvm_builder import TVMBuilder
+
+    runtime_tvm_config = run_config.runtime.get("tvm", {})
+    compiled_cache_dir = (
+        runtime_tvm_config.get("compiled_cache_dir")
+        or run_config.tvm.get("compiled_cache_dir")
+    )
+    if compiled_cache_dir is None:
+        compiled_cache_dir = hub_cache_dir / "tvm_compiled"
+    else:
+        compiled_cache_dir = Path(compiled_cache_dir).expanduser()
+        if not compiled_cache_dir.is_absolute():
+            compiled_cache_dir = project_root / compiled_cache_dir
+
+    try:
+        tvm_builder = TVMBuilder(compiled_cache_dir, pipeline_trace=pipeline_trace)
+        return tvm_builder.build_base_artifacts(
+            model,
+            source_key=model_spec["source_key"],
+            model_hash=original_hash,
+            shape_dict=model_spec["shape_dict"],
+        ) + (None,)
+    except Exception as error:
+        print(
+            f"Could not prepare base TVM executable for "
+            f"{model_spec['source_key']}: {error}"
+        )
+        return None, None, None, error
 
 
 def run_model_task(task):
-    """Load, compile, and test one vision model in a fresh worker process."""
+    """Load, compile, and test one model in a fresh worker process."""
     threads_per_worker = task["threads_per_worker"]
     if threads_per_worker > 0:
         os.environ["TVM_NUM_THREADS"] = str(threads_per_worker)
@@ -29,7 +90,6 @@ def run_model_task(task):
     from configs.config import load_pipeline_config
     from main import _process_model_batch
     from src.dispatchers import BackendDispatcher, ModelComparisonDispatcher
-    from src.model_orchestrator.tvm_builder import TVMBuilder
     from src.reports import ReportManager
     from src.reports.logger import configure_pipeline_logger
     from src.runner.preprocessing.text_inputs import TextInputProvider
@@ -54,41 +114,24 @@ def run_model_task(task):
 
     hub_config = run_config.hub
     hub_cache_dir = project_root / hub_config["cache_folder_rel_path"].lstrip("/\\")
-    runtime_tvm_config = run_config.runtime.get("tvm", {})
-    compiled_cache_dir = (
-        runtime_tvm_config.get("compiled_cache_dir")
-        or run_config.tvm.get("compiled_cache_dir")
+    model, model_path = _load_model(
+        model_spec,
+        project_root,
+        run_config,
+        hub_cache_dir,
     )
-    if compiled_cache_dir is None:
-        compiled_cache_dir = hub_cache_dir / "tvm_compiled"
-    else:
-        compiled_cache_dir = Path(compiled_cache_dir).expanduser()
-        if not compiled_cache_dir.is_absolute():
-            compiled_cache_dir = project_root / compiled_cache_dir
-
-    tvm_builder = TVMBuilder(compiled_cache_dir, pipeline_trace=pipeline_trace)
-    model, model_path, original_hash = _load_vision_model(
-        model_spec, hub_cache_dir
+    original_hash = _model_hash(model, model_path)
+    relax_model, relax_input_names, base_executable, tvm_build_error = (
+        _build_tvm_artifacts(
+            model,
+            model_spec,
+            original_hash,
+            run_config,
+            project_root,
+            hub_cache_dir,
+            pipeline_trace,
+        )
     )
-    relax_model = None
-    relax_input_names = None
-    base_executable = None
-    tvm_build_error = None
-    try:
-        relax_model, relax_input_names, base_executable = (
-            tvm_builder.build_base_artifacts(
-                model,
-                source_key=model_spec["source_key"],
-                model_hash=original_hash,
-                shape_dict=model_spec["shape_dict"],
-            )
-        )
-    except Exception as error:
-        tvm_build_error = error
-        print(
-            f"Could not prepare base TVM executable for "
-            f"{model_spec['source_key']}: {error}"
-        )
     model_data = {
         **model_spec,
         "model": model,
@@ -107,6 +150,9 @@ def run_model_task(task):
     comparison_dispatcher = ModelComparisonDispatcher()
     worker_report_manager = ReportManager(project_root, "worker.json")
     text_input_provider = TextInputProvider(run_config.text)
+    preloaded_text_prompts = (
+        text_input_provider.load() if "text" in model_spec["tags"] else None
+    )
     results = []
 
     with tempfile.TemporaryDirectory(
@@ -117,6 +163,8 @@ def run_model_task(task):
             batch_state = dict(source_batch)
             batch_state["report_path"] = temporary_dir / f"batch-{batch_index}.json"
             batch_state["report_started"] = False
+            if preloaded_text_prompts is not None:
+                batch_state["text_prompts"] = preloaded_text_prompts
             _process_model_batch(
                 model_data,
                 batch_state,

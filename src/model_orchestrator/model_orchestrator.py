@@ -494,29 +494,13 @@ class ModelOrchestrator:
             }
 
     def _load_text_model(self, model_name, model_opset):
-        try:
-            data_dir = Path(hub.download_model_with_test_data(model_name))
-            candidates = [
-                path
-                for path in data_dir.rglob("GPT-2-LM-HEAD/*.onnx")
-                if "_opt" not in path.name
-            ]
-            if candidates:
-                model_path = sorted(candidates)[0]
-                print("Text model path: " + str(model_path))
-                return onnx.load(str(model_path)), str(model_path)
-        except Exception as error:
-            print(f"Could not load text model artifacts for {model_name}: {error}")
-        model = hub.load(model_name, opset=model_opset)
-        fallback = (
-            self.script_dir
-            / self.hub_config["cache_folder_rel_path"]
-            / "text"
-            / f"{model_name}-{model_opset}.onnx"
+        return load_text_model(
+            self.script_dir,
+            self.hub_config,
+            model_name,
+            model_opset,
         )
-        fallback.parent.mkdir(parents=True, exist_ok=True)
-        onnx.save(model, str(fallback))
-        return model, str(fallback)
+
 
     def get_model_path(self, model_obj, cache_folder_rel_path):
         model_path = model_obj.model_path
@@ -546,3 +530,30 @@ class ModelOrchestrator:
             for dimension in model_shape
             if not isinstance(dimension, str) and dimension > 5
         ]
+
+
+def load_text_model(script_dir, hub_config, model_name, model_opset):
+    """Load a text model artifact; shared by the coordinator and workers."""
+    try:
+        data_dir = Path(hub.download_model_with_test_data(model_name))
+        candidates = [
+            path
+            for path in data_dir.rglob("GPT-2-LM-HEAD/*.onnx")
+            if "_opt" not in path.name
+        ]
+        if candidates:
+            model_path = sorted(candidates)[0]
+            print("Text model path: " + str(model_path))
+            return onnx.load(str(model_path)), str(model_path)
+    except Exception as error:
+        print(f"Could not load text model artifacts for {model_name}: {error}")
+    model = hub.load(model_name, opset=model_opset)
+    fallback = (
+        Path(script_dir)
+        / hub_config["cache_folder_rel_path"]
+        / "text"
+        / f"{model_name}-{model_opset}.onnx"
+    )
+    fallback.parent.mkdir(parents=True, exist_ok=True)
+    onnx.save(model, str(fallback))
+    return model, str(fallback)
