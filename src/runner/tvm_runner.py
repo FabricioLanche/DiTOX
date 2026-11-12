@@ -73,11 +73,11 @@ class TVMRunner:
         ]
 
     def execute_tvm_executable(self, executable, images_paths, config, input_names,
-                               print_percentage=True, include_certainties=False):
+                               print_percentage=True, include_certainties=False,
+                               prepared_image_inputs=None):
         from pathlib import Path
         from PIL import Image
         from scipy.special import softmax
-        from src.runner.preprocessing.model_preprocessor import ModelPreprocessor
 
         self._load_executable(executable, input_names)
 
@@ -86,12 +86,15 @@ class TVMRunner:
             input_dimension = [224, 224]
         input_shape = config.get("input_shape", [1, 3, 224, 224])
 
-        preprocessing_data = {
-            "input": input_shape,
-            "input_dimension": input_dimension,
-            "library": None
-        }
-        model_preprocessor = ModelPreprocessor(preprocessing_data)
+        if prepared_image_inputs is None:
+            from src.runner.preprocessing.model_preprocessor import ModelPreprocessor
+
+            preprocessing_data = {
+                "input": input_shape,
+                "input_dimension": input_dimension,
+                "library": None,
+            }
+            model_preprocessor = ModelPreprocessor(preprocessing_data)
 
         output_data = {}
         count = 0
@@ -108,21 +111,25 @@ class TVMRunner:
             count += 1
 
             img_name = Path(img_path).name
-            img = Image.open(img_path)
+            if prepared_image_inputs is None:
+                img = Image.open(img_path)
 
-            if len(input_shape) > 3 and (input_shape[1] == 1 or input_shape[3] == 1):
-                img = img.convert("L")
+                if len(input_shape) > 3 and (input_shape[1] == 1 or input_shape[3] == 1):
+                    img = img.convert("L")
+                else:
+                    if img.mode in ("L", "BGR"):
+                        img = img.convert("RGB")
+
+                img = img.resize(input_dimension)
+                img = model_preprocessor.preprocess(config.get("model_name", ""), img, True)
+
+                if len(input_shape) < len(img.shape):
+                    img = np.squeeze(img)
+                input_value = img.astype(np.float32)
             else:
-                if img.mode in ("L", "BGR"):
-                    img = img.convert("RGB")
+                input_value = prepared_image_inputs.get(img_path)
 
-            img = img.resize(input_dimension)
-            img = model_preprocessor.preprocess(config.get("model_name", ""), img, True)
-
-            if len(input_shape) < len(img.shape):
-                img = np.squeeze(img)
-
-            input_dict = {input_name: img.astype(np.float32)}
+            input_dict = {input_name: input_value}
             outputs = self.execute_tvm_model(input_dict)
 
             if len(outputs) == 1 and np.array(outputs).ndim == 3:

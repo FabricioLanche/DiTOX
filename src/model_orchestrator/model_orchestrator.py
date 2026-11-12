@@ -1,7 +1,9 @@
 import hashlib
 import json
+from contextlib import nullcontext
 from pathlib import Path
 
+import onnx
 from onnx import hub
 
 
@@ -29,12 +31,14 @@ class ModelOrchestrator:
         script_dir,
         check_prob_models=False,
         tvm_builder=None,
+        pipeline_trace=None,
     ):
         self.general_config = general_config
         self.hub_config = hub_config
         self.script_dir = Path(script_dir)
         self.check_prob_models = check_prob_models
         self.tvm_builder = tvm_builder
+        self.pipeline_trace = pipeline_trace
 
         self.manifest_categories = None
         self.manifest_source_keys = {}
@@ -161,9 +165,31 @@ class ModelOrchestrator:
                 model_obj,
                 self.hub_config["cache_folder_rel_path"],
             )
-            model = hub.load(model_name, opset=model_opset)
-            with open(model_path, "rb") as model_file:
-                original_hash = hashlib.md5(model_file.read()).hexdigest()
+            model_stage = (
+                self.pipeline_trace.stage(
+                    "model.onnx_load", model=model_name_opset
+                )
+                if self.pipeline_trace
+                else nullcontext()
+            )
+            with model_stage:
+                if "text" in tags:
+                    model, model_path = self._load_text_model(
+                        model_name, model_opset
+                    )
+                else:
+                    model = hub.load(model_name, opset=model_opset)
+
+            hash_stage = (
+                self.pipeline_trace.stage(
+                    "model.source_hash", model=model_name_opset
+                )
+                if self.pipeline_trace
+                else nullcontext()
+            )
+            with hash_stage:
+                with open(model_path, "rb") as model_file:
+                    original_hash = hashlib.md5(model_file.read()).hexdigest()
             source_key = self.manifest_source_keys.get(
                 (model_name, model_opset), model_name_opset
             )
@@ -174,14 +200,22 @@ class ModelOrchestrator:
             tvm_build_error = None
             if self.tvm_builder is not None and "text" not in tags:
                 try:
-                    relax_model, relax_input_names, base_executable = (
-                        self.tvm_builder.build_base_artifacts(
-                            model,
-                            source_key=source_key,
-                            model_hash=original_hash,
-                            shape_dict={first_input["name"]: model_shape},
+                    builder_stage = (
+                        self.pipeline_trace.stage(
+                            "model.tvm_artifacts", model=model_name_opset
                         )
+                        if self.pipeline_trace
+                        else nullcontext()
                     )
+                    with builder_stage:
+                        relax_model, relax_input_names, base_executable = (
+                            self.tvm_builder.build_base_artifacts(
+                                model,
+                                source_key=source_key,
+                                model_hash=original_hash,
+                                shape_dict={first_input["name"]: model_shape},
+                            )
+                        )
                 except Exception as error:
                     tvm_build_error = error
                     print(f"Could not prepare base TVM executable for {source_key}: {error}")
@@ -206,6 +240,31 @@ class ModelOrchestrator:
                 "original_hash": original_hash,
                 "opt_model_path": model_path.replace(".onnx", "_opt.onnx"),
             }
+
+    def _load_text_model(self, model_name, model_opset):
+        try:
+            data_dir = Path(hub.download_model_with_test_data(model_name))
+            candidates = [
+                path
+                for path in data_dir.rglob("GPT-2-LM-HEAD/*.onnx")
+                if "_opt" not in path.name
+            ]
+            if candidates:
+                model_path = sorted(candidates)[0]
+                print("Text model path: " + str(model_path))
+                return onnx.load(str(model_path)), str(model_path)
+        except Exception as error:
+            print(f"Could not load text model artifacts for {model_name}: {error}")
+        model = hub.load(model_name, opset=model_opset)
+        fallback = (
+            self.script_dir
+            / self.hub_config["cache_folder_rel_path"]
+            / "text"
+            / f"{model_name}-{model_opset}.onnx"
+        )
+        fallback.parent.mkdir(parents=True, exist_ok=True)
+        onnx.save(model, str(fallback))
+        return model, str(fallback)
 
     def get_model_path(self, model_obj, cache_folder_rel_path):
         model_path = model_obj.model_path

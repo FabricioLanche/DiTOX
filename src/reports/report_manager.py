@@ -50,8 +50,7 @@ class ReportManager:
 
     @staticmethod
     def problematic_models(report_path):
-        with Path(report_path).open("r", encoding="utf-8") as report_file:
-            report = json.load(report_file)
+        report = ReportManager.load(report_path)
 
         return (
             set(report.get("failed_models", []))
@@ -67,6 +66,11 @@ class ReportManager:
                 and any(result.get(key) for key in ("different", "failed", "blocked"))
             }
         )
+
+    @staticmethod
+    def load(report_path):
+        with Path(report_path).open("r", encoding="utf-8") as report_file:
+            return json.load(report_file)
 
     @staticmethod
     def save(report_path, report):

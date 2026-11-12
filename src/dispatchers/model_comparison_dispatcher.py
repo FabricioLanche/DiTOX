@@ -2,6 +2,7 @@ import numpy as np
 
 from src.metric_comparison.comparators.classification import ClassificationComparator
 from src.metric_comparison.comparators.ssd import SSDComparator
+from src.metric_comparison.comparators.text import TextComparator
 from src.metric_comparison.comparators.yolov3 import YOLOV3Comparator
 from src.metric_comparison.evaluators.object_detection import ObjectDetectionEvaluator
 from src.metric_comparison.extractors.ssd_extractor import SSDExtractor
@@ -25,8 +26,14 @@ class ModelComparisonDispatcher:
         base_model_out,
         opt_model_out,
         model,
+        text_runner=None,
     ):
-        if ("classification" in tags):
+        if "text" in tags and text_runner is not None:
+            evaluation = text_runner.evaluate(base_model_out, opt_model_out)
+            comparator = TextComparator(evaluation, model_comparisons)
+            comparator.update(model_name_opset, current_pass)
+
+        elif ("classification" in tags):
             evaluation = evaluation_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties)
             print(evaluation)
             comparator = ClassificationComparator(evaluation, model_comparisons)
