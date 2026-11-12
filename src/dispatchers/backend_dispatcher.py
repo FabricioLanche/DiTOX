@@ -1,9 +1,12 @@
 import hashlib
+from contextlib import nullcontext
+
 import onnx
 import numpy as np
 
 from src.optimizer import ONNXOptimizer, TVMOptimizer
 from src.runner.onnx_runner import ONNXRunner
+from src.runner.text_runner import TextRunner
 from src.runner.tvm_runner import TVMRunner
 
 
@@ -15,13 +18,20 @@ def _has_dissimilarity(evaluation):
 class BackendDispatcher:
     """Select backend-specific components and execute baseline models."""
 
-    def __init__(self, run_config):
+    def __init__(self, run_config, pipeline_trace=None):
         self.backend = run_config.backend
+        self.pipeline_trace = pipeline_trace
         self.onnx_runner = ONNXRunner({})
+        self.text_runner = TextRunner(run_config.text)
         self.tvm_optimizer = TVMOptimizer() if self.is_tvm else None
         self.onnx_optimizer = ONNXOptimizer()
         self.optimizer = self.tvm_optimizer if self.is_tvm else self.onnx_optimizer
         self.tvm_runner = TVMRunner(run_config.tvm) if self.is_tvm else None
+
+    def _stage(self, name, **context):
+        if self.pipeline_trace is None:
+            return nullcontext()
+        return self.pipeline_trace.stage(name, **context)
 
     @property
     def is_tvm(self):
@@ -46,10 +56,11 @@ class BackendDispatcher:
         base_executable=None,
         relax_input_names=None,
         tvm_build_error=None,
+        prepared_image_inputs=None,
+        text_prompts=None,
     ):
         if "text" in tags:
-            print("Text models not supported on this version.")
-            return None
+            return self.text_runner.execute_text_model(model, text_prompts or [])
 
         if self.is_tvm:
             if tvm_build_error is not None:
@@ -60,6 +71,7 @@ class BackendDispatcher:
                 model_config,
                 input_names=relax_input_names,
                 include_certainties=include_certainties,
+                prepared_image_inputs=prepared_image_inputs,
             )
             return output
 
@@ -88,25 +100,38 @@ class BackendDispatcher:
         model_comparisons,
         enable_kt_on_one_dim_tensor,
         relax_input_names=None,
+        prepared_image_inputs=None,
+        text_prompts=None,
     ):
         conversion_failed = False
         opt_model_out = None
-        if self.is_tvm:
+        if self.is_tvm and "text" not in tags:
             try:
                 if current_pass == "all":
                     print("Running optimized TVM model. Pass: all")
                     optimized_pipeline = self.tvm_optimizer.get_optimized_pipeline()
-                    optimized_executable = self.tvm_optimizer.generate_executable(
-                        base_relax_mod,
-                        optimized_pipeline,
-                    )
-                    opt_model_out = self.tvm_runner.execute_tvm_executable(
-                        optimized_executable,
-                        images_paths,
-                        model_config,
-                        input_names=relax_input_names,
-                        include_certainties=include_certainties,
-                    )
+                    with self._stage(
+                        "tvm.optimized_compile",
+                        model=model_name_opset,
+                        pass_name=current_pass,
+                    ):
+                        optimized_executable = self.tvm_optimizer.generate_executable(
+                            base_relax_mod,
+                            optimized_pipeline,
+                        )
+                    with self._stage(
+                        "tvm.optimized_run",
+                        model=model_name_opset,
+                        pass_name=current_pass,
+                    ):
+                        opt_model_out = self.tvm_runner.execute_tvm_executable(
+                            optimized_executable,
+                            images_paths,
+                            model_config,
+                            input_names=relax_input_names,
+                            include_certainties=include_certainties,
+                            prepared_image_inputs=prepared_image_inputs,
+                        )
                 else:
                     required_dependencies = self.tvm_optimizer.get_isolation_dependencies(
                         current_pass
@@ -123,17 +148,29 @@ class BackendDispatcher:
                             include_optimization=False,
                         )
                         try:
-                            dependency_executable = self.tvm_optimizer.generate_executable(
-                                base_relax_mod,
-                                dependency_pipeline,
-                            )
-                            dependency_out = self.tvm_runner.execute_tvm_executable(
-                                dependency_executable,
-                                images_paths,
-                                model_config,
-                                input_names=relax_input_names,
-                                include_certainties=include_certainties,
-                            )
+                            dependency_context = {
+                                "model": model_name_opset,
+                                "pass_name": current_pass,
+                                "dependency": dependency,
+                            }
+                            with self._stage(
+                                "tvm.dependency_compile", **dependency_context
+                            ):
+                                dependency_executable = self.tvm_optimizer.generate_executable(
+                                    base_relax_mod,
+                                    dependency_pipeline,
+                                )
+                            with self._stage(
+                                "tvm.dependency_run", **dependency_context
+                            ):
+                                dependency_out = self.tvm_runner.execute_tvm_executable(
+                                    dependency_executable,
+                                    images_paths,
+                                    model_config,
+                                    input_names=relax_input_names,
+                                    include_certainties=include_certainties,
+                                    prepared_image_inputs=prepared_image_inputs,
+                                )
                         except Exception as error:
                             dependency_failure = {
                                 "pass": dependency,
@@ -148,13 +185,16 @@ class BackendDispatcher:
                             )
                             break
 
-                        dependency_evaluation = self.tvm_runner.evaluate(
-                            base_model_out,
-                            dependency_out,
-                            type=tags,
-                            include_certainties=include_certainties,
-                            enable_kt_on_one_dim_tensor=enable_kt_on_one_dim_tensor,
-                        )
+                        with self._stage(
+                            "tvm.dependency_compare", **dependency_context
+                        ):
+                            dependency_evaluation = self.tvm_runner.evaluate(
+                                base_model_out,
+                                dependency_out,
+                                type=tags,
+                                include_certainties=include_certainties,
+                                enable_kt_on_one_dim_tensor=enable_kt_on_one_dim_tensor,
+                            )
                         dependency_different = _has_dissimilarity(
                             dependency_evaluation
                         )
@@ -199,17 +239,28 @@ class BackendDispatcher:
                             dependencies=required_dependencies,
                             include_optimization=True,
                         )
-                        candidate_executable = self.tvm_optimizer.generate_executable(
-                            base_relax_mod,
-                            candidate_pipeline,
-                        )
-                        opt_model_out = self.tvm_runner.execute_tvm_executable(
-                            candidate_executable,
-                            images_paths,
-                            model_config,
-                            input_names=relax_input_names,
-                            include_certainties=include_certainties,
-                        )
+                        candidate_context = {
+                            "model": model_name_opset,
+                            "pass_name": current_pass,
+                        }
+                        with self._stage(
+                            "tvm.candidate_compile", **candidate_context
+                        ):
+                            candidate_executable = self.tvm_optimizer.generate_executable(
+                                base_relax_mod,
+                                candidate_pipeline,
+                            )
+                        with self._stage(
+                            "tvm.candidate_run", **candidate_context
+                        ):
+                            opt_model_out = self.tvm_runner.execute_tvm_executable(
+                                candidate_executable,
+                                images_paths,
+                                model_config,
+                                input_names=relax_input_names,
+                                include_certainties=include_certainties,
+                                prepared_image_inputs=prepared_image_inputs,
+                            )
             except Exception as e:
                 print(f"TVM Relax pass {current_pass} error: {e}")
                 if current_pass not in model_comparisons[model_name_opset]["blocked"]:
@@ -221,11 +272,16 @@ class BackendDispatcher:
                 conversion_failed = True
         else:
             # --- ORT branch ---
-            result = self.onnx_optimizer.optimize_model(
-                model_path,
-                opt_model_path,
-                optimization=current_pass,
-            )
+            with self._stage(
+                "onnx.optimization",
+                model=model_name_opset,
+                pass_name=current_pass,
+            ):
+                result = self.onnx_optimizer.optimize_model(
+                    model_path,
+                    opt_model_path,
+                    optimization=current_pass,
+                )
             if result.returncode != 0:
                 print(result.stdout)
                 if model_name_opset not in model_comparisons["conversion_errors"]:
@@ -248,8 +304,17 @@ class BackendDispatcher:
                 try:
                     onnx_model = onnx.load(opt_model_path)
 
-                    if "text" not in tags:
-                        opt_model_out = self.onnx_runner.execute_onnx_model(onnx_model, images_paths, config=model_config, include_certainties=include_certainties)
+                    with self._stage(
+                        "onnx.optimized_run",
+                        model=model_name_opset,
+                        pass_name=current_pass,
+                    ):
+                        if "text" in tags:
+                            opt_model_out = self.text_runner.execute_text_model(
+                                onnx_model, text_prompts or []
+                            )
+                        else:
+                            opt_model_out = self.onnx_runner.execute_onnx_model(onnx_model, images_paths, config=model_config, include_certainties=include_certainties)
 
                 except Exception as e:
                     if model_name_opset not in model_comparisons["conversion_errors"]:

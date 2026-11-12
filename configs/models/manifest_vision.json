@@ -1,0 +1,11 @@
+{
+  "source": "Vision models for the unified vision pipeline.",
+  "models": [
+    {
+      "model": "MobileNet v2-7",
+      "opset": 7,
+      "category": "classification",
+      "source_key": "MobileNet v2-7-7"
+    }
+  ]
+}
