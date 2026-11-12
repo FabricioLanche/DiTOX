@@ -1,7 +1,11 @@
 import hashlib
 import json
+import os
+import tempfile
 from contextlib import nullcontext
+from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import onnx
 from onnx import hub
@@ -47,12 +51,153 @@ class ModelOrchestrator:
 
         cache_dir = self.script_dir / hub_config["cache_folder_rel_path"]
         hub.set_dir(str(cache_dir))
+        self.external_model_paths = self._download_configured_external_models(
+            cache_dir
+        )
+        self.external_model_specs = self._load_external_model_specs()
         self.all_models = self._discover_models()
 
+    def _load_external_model_specs(self):
+        manifest_rel_path = self.hub_config.get(
+            "external_model_manifest_rel_path",
+            "configs/models/external_models.json",
+        )
+        manifest_path = self.script_dir / manifest_rel_path.lstrip("/\\")
+        if not manifest_path.is_file():
+            return {}
+        with manifest_path.open("r", encoding="utf-8") as stream:
+            return json.load(stream).get("models", {})
+
+    def _download_configured_external_models(self, cache_dir):
+        """Fetch configured Hugging Face artifacts alongside ONNX Hub models."""
+        requested_models = self.hub_config.get("external_model_names", [])
+        if not requested_models:
+            return {}
+        if not isinstance(requested_models, list) or not all(
+            isinstance(name, str) for name in requested_models
+        ):
+            raise ValueError("hub.external_model_names must be a list of strings.")
+
+        manifest_rel_path = self.hub_config.get(
+            "external_model_manifest_rel_path",
+            "configs/models/external_models.json",
+        )
+        manifest_path = self.script_dir / manifest_rel_path.lstrip("/\\")
+        with manifest_path.open("r", encoding="utf-8") as manifest_file:
+            model_specs = json.load(manifest_file).get("models", {})
+
+        if "all" in requested_models:
+            if len(requested_models) != 1:
+                raise ValueError(
+                    "hub.external_model_names cannot combine 'all' with model names."
+                )
+            selected_names = list(model_specs)
+        else:
+            selected_names = list(dict.fromkeys(requested_models))
+        unknown_models = [name for name in selected_names if name not in model_specs]
+        if unknown_models:
+            raise ValueError(
+                "Unknown external model(s) in hub.external_model_names: "
+                + ", ".join(unknown_models)
+            )
+
+        try:
+            from huggingface_hub import HfApi, hf_hub_download
+        except ImportError as error:
+            raise RuntimeError(
+                "External model downloads require huggingface-hub. "
+                "Install it with: pip install -r requirements.txt"
+            ) from error
+
+        output_root = cache_dir / "external"
+        force_download = self.hub_config.get(
+            "external_model_force_download", False
+        )
+        api = HfApi()
+        resolved_revisions = {}
+        downloaded_models = {}
+
+        for model_name in selected_names:
+            spec = model_specs[model_name]
+            model_dir = output_root / model_name
+            model_dir.mkdir(parents=True, exist_ok=True)
+            artifacts = []
+            for artifact in spec["artifacts"]:
+                repo_id = artifact["repo_id"]
+                requested_revision = artifact.get("revision", "main")
+                revision_key = (repo_id, requested_revision)
+                if revision_key not in resolved_revisions:
+                    resolved_revisions[revision_key] = api.model_info(
+                        repo_id, revision=requested_revision
+                    ).sha
+                resolved_revision = resolved_revisions[revision_key]
+                local_path = hf_hub_download(
+                    repo_id=repo_id,
+                    filename=artifact["filename"],
+                    revision=resolved_revision,
+                    local_dir=str(model_dir),
+                    force_download=force_download,
+                )
+                artifacts.append(
+                    {
+                        "repo_id": repo_id,
+                        "revision": resolved_revision,
+                        "filename": artifact["filename"],
+                        "size_bytes": Path(local_path).stat().st_size,
+                    }
+                )
+                print(
+                    f"Downloaded {model_name}: {repo_id}@"
+                    f"{resolved_revision[:8]}/{artifact['filename']}"
+                )
+
+            provenance = {
+                "model": model_name,
+                "task": spec["task"],
+                "downloaded_at": datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ),
+                "artifacts": artifacts,
+            }
+            self._atomic_json_save(model_dir / "_source.json", provenance)
+            downloaded_models[model_name] = model_dir
+
+        return downloaded_models
+
+    @staticmethod
+    def _atomic_json_save(path, payload):
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=path.parent,
+                prefix=f".{path.name}-",
+                suffix=".tmp",
+                delete=False,
+            ) as temporary_file:
+                temporary_path = Path(temporary_file.name)
+                json.dump(payload, temporary_file, indent=2)
+                temporary_file.flush()
+                os.fsync(temporary_file.fileno())
+            os.replace(temporary_path, path)
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+
     def _discover_models(self):
+        if self.hub_config.get("external_models_only", False):
+            self.manifest_categories = {}
+            self.manifest_source_keys = {}
+            self.manifest_missing_models = []
+            self.manifest_excluded_by_config = []
+            return self._discover_external_models()
+
         manifest_rel_path = self.hub_config.get("model_manifest_rel_path")
         if not manifest_rel_path:
-            return hub.list_models(tags=self.hub_config["tags"])
+            return hub.list_models(tags=self.hub_config["tags"]) + self._discover_external_models()
 
         manifest_path = self.script_dir / manifest_rel_path.lstrip("/\\")
         with manifest_path.open("r", encoding="utf-8") as manifest_stream:
@@ -94,11 +239,67 @@ class ModelOrchestrator:
                 + ", ".join(self.manifest_missing_models)
             )
 
-        return [
+        hub_models = [
             catalog_by_id[model_id]
             for model_id in self.manifest_categories
             if model_id in catalog_by_id
         ]
+        return hub_models + self._discover_external_models()
+
+    def _discover_external_models(self):
+        """Expose downloaded task models through the normal model iteration."""
+        selected_names = self.hub_config.get("external_model_names", [])
+        discovered = []
+        for model_name in selected_names:
+            if model_name == "all":
+                names = list(self.external_model_specs)
+            else:
+                names = [model_name]
+            for name in names:
+                model_dir = self.external_model_paths.get(name)
+                if model_dir is None:
+                    continue
+                spec = self.external_model_specs[name]
+                primary = spec.get("primary_artifact")
+                if primary is None:
+                    primary = next(
+                        artifact["filename"]
+                        for artifact in spec["artifacts"]
+                        if artifact["filename"].endswith(".onnx")
+                    )
+                model_path = model_dir / primary
+                if not model_path.is_file():
+                    raise FileNotFoundError(
+                        f"Primary ONNX artifact for {name} not found: {model_path}"
+                    )
+                model = onnx.load(str(model_path), load_external_data=False)
+                opset = max(
+                    (item.version for item in model.opset_import), default=17
+                )
+                inputs = []
+                for graph_input in model.graph.input:
+                    tensor_type = graph_input.type.tensor_type
+                    shape = [
+                        dimension.dim_value or dimension.dim_param
+                        for dimension in tensor_type.shape.dim
+                    ]
+                    inputs.append({
+                        "name": graph_input.name,
+                        "shape": shape,
+                        "dtype": onnx.TensorProto.DataType.Name(tensor_type.elem_type).lower(),
+                    })
+                metadata = {"io_ports": {"inputs": inputs}}
+                discovered.append(SimpleNamespace(
+                    model=name,
+                    opset=opset,
+                    tags=[spec["task"]],
+                    metadata=metadata,
+                    is_external=True,
+                    external_spec=spec,
+                    external_model_path=str(model_path),
+                    external_model_dir=str(model_dir),
+                ))
+        return discovered
 
     def get_models(
         self,
@@ -132,7 +333,9 @@ class ModelOrchestrator:
                 continue
             if model_name_opset in excluded_names:
                 continue
-            if self.manifest_categories is not None:
+            if getattr(model_obj, "is_external", False):
+                tags = [model_obj.external_spec["task"]]
+            elif self.manifest_categories is not None:
                 category = self.manifest_categories[(model_name, model_opset)]
                 tags = [category]
                 if category != "text":
@@ -170,9 +373,29 @@ class ModelOrchestrator:
                 "input_dimension": img_dimension,
             }
 
-            model_path = self.get_model_path(
-                model_obj,
-                self.hub_config["cache_folder_rel_path"],
+            if getattr(model_obj, "is_external", False):
+                if len(model_shape) == 4:
+                    external_nhwc = model_shape[-1] == 3
+                    spatial = model_shape[1:3] if external_nhwc else model_shape[-2:]
+                else:
+                    spatial = []
+                model_config.update({
+                    "external": True,
+                    "task": model_obj.external_spec["task"],
+                    "model_name": model_name,
+                    "input_specs": model_obj.metadata["io_ports"]["inputs"],
+                    "model_dir": model_obj.external_model_dir,
+                    "primary_model_path": model_obj.external_model_path,
+                    "input_dimension": spatial,
+                })
+
+            model_path = (
+                model_obj.external_model_path
+                if getattr(model_obj, "is_external", False)
+                else self.get_model_path(
+                    model_obj,
+                    self.hub_config["cache_folder_rel_path"],
+                )
             )
             source_key = self.manifest_source_keys.get(
                 (model_name, model_opset), model_name_opset
@@ -188,6 +411,9 @@ class ModelOrchestrator:
                     "model_config": model_config,
                     "model_path": model_path,
                     "shape_dict": {first_input["name"]: model_shape},
+                    "external": getattr(model_obj, "is_external", False),
+                    "external_spec": getattr(model_obj, "external_spec", None),
+                    "external_model_dir": getattr(model_obj, "external_model_dir", None),
                 }
                 continue
             model_stage = (
@@ -198,7 +424,9 @@ class ModelOrchestrator:
                 else nullcontext()
             )
             with model_stage:
-                if "text" in tags:
+                if getattr(model_obj, "is_external", False):
+                    model = onnx.load(model_path)
+                elif "text" in tags:
                     model, model_path = self._load_text_model(
                         model_name, model_opset
                     )
@@ -260,6 +488,9 @@ class ModelOrchestrator:
                 "tvm_build_error": tvm_build_error,
                 "original_hash": original_hash,
                 "opt_model_path": model_path.replace(".onnx", "_opt.onnx"),
+                "external": getattr(model_obj, "is_external", False),
+                "external_spec": getattr(model_obj, "external_spec", None),
+                "external_model_dir": getattr(model_obj, "external_model_dir", None),
             }
 
     def _load_text_model(self, model_name, model_opset):

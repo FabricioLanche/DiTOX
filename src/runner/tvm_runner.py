@@ -145,3 +145,11 @@ class TVMRunner:
                 output_data[img_name] = outputs
 
         return output_data
+
+    def execute_tvm_inputs(self, executable, input_names, named_inputs):
+        """Execute arbitrary named tensor inputs using a compiled Relax module."""
+        self._load_executable(executable, input_names)
+        output_data = {}
+        for sample_id, inputs in named_inputs.items():
+            output_data[sample_id] = self.execute_tvm_model(inputs)
+        return output_data

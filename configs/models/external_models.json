@@ -1,0 +1,197 @@
+{
+  "models": {
+    "MoveNet-Lightning": {
+      "task": "body_recognition",
+      "artifacts": [
+        {
+          "repo_id": "onnx-community/movenet-lightning-web",
+          "filename": "onnx/model.onnx"
+        }
+      ]
+    },
+    "MediaPipe-Pose": {
+      "task": "body_recognition",
+      "artifacts": [
+        {
+          "repo_id": "opencv/pose_estimation_mediapipe",
+          "filename": "pose_estimation_mediapipe_2023mar.onnx"
+        }
+      ]
+    },
+    "RTMPose-S": {
+      "task": "body_recognition",
+      "artifacts": [
+        {
+          "repo_id": "bukuroo/RTMPose-ONNX",
+          "filename": "rtmpose-s.onnx"
+        }
+      ]
+    },
+    "RTMPose-M": {
+      "task": "body_recognition",
+      "artifacts": [
+        {
+          "repo_id": "bukuroo/RTMPose-ONNX",
+          "filename": "rtmpose-m.onnx"
+        }
+      ]
+    },
+    "YOLOv8n-Pose": {
+      "task": "body_recognition",
+      "artifacts": [
+        {
+          "repo_id": "Xenova/yolov8n-pose",
+          "filename": "onnx/model.onnx"
+        }
+      ]
+    },
+    "Whisper-Base-Encoder": {
+      "task": "speech_recognition",
+      "artifacts": [
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "onnx/encoder_model.onnx"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "onnx/decoder_model_merged.onnx"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "generation_config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "preprocessor_config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "tokenizer.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "tokenizer_config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "vocab.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "merges.txt"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "normalizer.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "special_tokens_map.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-base",
+          "filename": "added_tokens.json"
+        }
+      ]
+    },
+    "Wav2Vec2-Base-960h": {
+      "task": "speech_recognition",
+      "artifacts": [
+        {
+          "repo_id": "onnx-community/wav2vec2-base-960h-ONNX",
+          "filename": "onnx/model.onnx"
+        },
+        {
+          "repo_id": "onnx-community/wav2vec2-base-960h-ONNX",
+          "filename": "config.json"
+        },
+        {
+          "repo_id": "onnx-community/wav2vec2-base-960h-ONNX",
+          "filename": "preprocessor_config.json"
+        },
+        {
+          "repo_id": "onnx-community/wav2vec2-base-960h-ONNX",
+          "filename": "special_tokens_map.json"
+        },
+        {
+          "repo_id": "onnx-community/wav2vec2-base-960h-ONNX",
+          "filename": "tokenizer_config.json"
+        },
+        {
+          "repo_id": "onnx-community/wav2vec2-base-960h-ONNX",
+          "filename": "vocab.json"
+        }
+      ]
+    },
+    "NeMo-Citrinet-512": {
+      "task": "speech_recognition",
+      "artifacts": [
+        {
+          "repo_id": "csukuangfj/sherpa-onnx-nemo-ctc-en-citrinet-512",
+          "filename": "model.onnx"
+        },
+        {
+          "repo_id": "csukuangfj/sherpa-onnx-nemo-ctc-en-citrinet-512",
+          "filename": "tokens.txt"
+        }
+      ]
+    },
+    "Whisper-Tiny-Encoder": {
+      "task": "speech_recognition",
+      "artifacts": [
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "onnx/encoder_model.onnx"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "onnx/decoder_model_merged.onnx"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "generation_config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "preprocessor_config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "tokenizer.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "tokenizer_config.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "vocab.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "merges.txt"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "normalizer.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "special_tokens_map.json"
+        },
+        {
+          "repo_id": "onnx-community/whisper-tiny",
+          "filename": "added_tokens.json"
+        }
+      ]
+    }
+  }
+}

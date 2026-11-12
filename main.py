@@ -18,7 +18,8 @@ from src.reports.logger import configure_pipeline_logger
 from src.reports import ReportManager
 from src.reports.checkpoint_manager import CheckpointManager
 from src.runner.preprocessing.prepared_image_inputs import PreparedImageInputs
-from src.runner.preprocessing.text_inputs import TextInputProvider
+from src.runner.preprocessing.text_inputs import DatasetInputProvider, TextInputProvider
+from src.runner.preprocessing.model_preprocessor import ModelPreprocessor
 
 
 def _available_cpu_count():
@@ -287,6 +288,7 @@ def _process_model_batch(
     original_hash = model_data["original_hash"]
     opt_model_path = model_data["opt_model_path"]
     images_paths = batch_state["images_paths"]
+    task_samples = batch_state.get("task_samples")
     text_prompts = None
     if "text" in tags:
         if batch_state.get("text_prompts") is None:
@@ -314,6 +316,7 @@ def _process_model_batch(
     print(model_path)
     base_relax_mod = relax_model if backend_dispatcher.is_tvm else None
     prepared_image_inputs = None
+    prepared_task_inputs = None
     trace_context = {
         "batch": model_comparisons_file.stem,
         "model": model_name_opset,
@@ -322,6 +325,7 @@ def _process_model_batch(
     try:
         if (
             backend_dispatcher.is_tvm
+            and task_samples is None
             and "text" not in tags
             and tvm_build_error is None
         ):
@@ -333,6 +337,32 @@ def _process_model_batch(
                         "preprocessing_subbatch_size", 32
                     ),
                 )
+
+        if task_samples is not None and model_data.get("external"):
+            prepared_task_inputs = {}
+            input_specs = model_config["input_specs"]
+            for sample in task_samples:
+                sample_id = str(sample["id"])
+                if "body_recognition" in tags:
+                    input_value, _, transform = ModelPreprocessor.preprocess_pose(
+                        sample["image_path"],
+                        model_name,
+                        input_specs[0]["shape"],
+                        input_specs[0]["dtype"],
+                        bbox=sample.get("bbox"),
+                    )
+                    sample["pose_transform"] = transform
+                    prepared_task_inputs[sample_id] = {
+                        input_specs[0]["name"]: input_value
+                    }
+                else:
+                    prepared_task_inputs[sample_id] = ModelPreprocessor.preprocess_speech(
+                        sample["audio"],
+                        sample["sample_rate"],
+                        model_name,
+                        input_specs,
+                        model_config["model_dir"],
+                    )
 
         with pipeline_trace.stage("baseline.run", **trace_context):
             base_model_out = backend_dispatcher.run_baseline(
@@ -346,6 +376,8 @@ def _process_model_batch(
                 tvm_build_error=tvm_build_error,
                 prepared_image_inputs=prepared_image_inputs,
                 text_prompts=text_prompts,
+                prepared_task_inputs=prepared_task_inputs,
+                task_samples=task_samples,
             )
     except Exception as error:
         if prepared_image_inputs is not None:
@@ -410,6 +442,8 @@ def _process_model_batch(
                         relax_input_names=relax_input_names,
                         prepared_image_inputs=prepared_image_inputs,
                         text_prompts=text_prompts,
+                        prepared_task_inputs=prepared_task_inputs,
+                        task_samples=task_samples,
                     )
                 )
 
@@ -513,23 +547,66 @@ def main():
     manifest_categories = model_orchestrator.manifest_categories
     manifest_missing_models = model_orchestrator.manifest_missing_models
     manifest_excluded_by_config = model_orchestrator.manifest_excluded_by_config
- 
-    all_images_paths = _discover_image_paths(images_folder, pipeline_trace)
+
+    task_config = run_config.task
+    task_type = task_config.get("type")
+    all_task_samples = None
+    if task_type:
+        dataset_path = Path(task_config["dataset_path"])
+        if not dataset_path.is_absolute():
+            dataset_path = Path(script_dir) / dataset_path
+        task_limit = task_config.get("limit", images_config.get("limit"))
+        if task_type == "body_recognition":
+            images_dir = Path(task_config["images_dir"])
+            if not images_dir.is_absolute():
+                images_dir = Path(script_dir) / images_dir
+            all_task_samples = DatasetInputProvider.load_pose_samples(
+                dataset_path, images_dir, task_limit
+            )
+            all_images_paths = [sample["image_path"] for sample in all_task_samples]
+            all_images_paths.append(str(dataset_path))
+        elif task_type == "speech_recognition":
+            all_task_samples = DatasetInputProvider.load_speech_samples(
+                dataset_path, task_limit
+            )
+            # Include the source dataset in checkpoint identity.
+            all_images_paths = [str(dataset_path)]
+        else:
+            raise ValueError(f"Unsupported task.type: {task_type}")
+        pipeline_trace.event(
+            "task.samples_loaded", task=task_type, sample_count=len(all_task_samples)
+        )
+    else:
+        all_images_paths = _discover_image_paths(images_folder, pipeline_trace)
 
     images_chunk = images_config["images_chunk"]
     starts_from = images_config["starts_from"]
-    limit = images_config["limit"]
+    limit = (
+        task_config.get("limit", len(all_task_samples))
+        if all_task_samples is not None
+        else images_config["limit"]
+    )
     ends_at = starts_from + images_chunk
     batch_states = []
 
     while ends_at < limit + images_chunk:
-        images_paths = all_images_paths[starts_from:ends_at]
+        if all_task_samples is not None:
+            task_samples = all_task_samples[starts_from:ends_at]
+            images_paths = [
+                sample["image_path"]
+                for sample in task_samples
+                if "image_path" in sample
+            ]
+        else:
+            task_samples = None
+            images_paths = all_images_paths[starts_from:ends_at]
         report_path = report_manager.chunk_path(starts_from, ends_at)
         print(" ---- Input Batch: " + str(starts_from) + " to " + str(ends_at))
 
         batch_states.append(
             {
                 "images_paths": images_paths,
+                "task_samples": task_samples,
                 "starts_from": starts_from,
                 "ends_at": ends_at,
                 "text_prompts": None,
@@ -648,6 +725,7 @@ def main():
         run_config.backend == "tvmr"
         and model_workers > 1
         and "text" not in hub_config.get("tags", [])
+        and all_task_samples is None
     )
     checkpoint_reports = (
         checkpoint_manager.reports_for(

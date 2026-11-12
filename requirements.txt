@@ -17,6 +17,7 @@ gast==0.6.0
 google-pasta==0.2.0
 grpcio==1.69.0
 h5py==3.12.1
+huggingface-hub==0.34.4
 humanfriendly==10.0
 idna==3.10
 Jinja2==3.1.5
@@ -81,3 +82,6 @@ wrapt==1.17.2
 transformers==4.56.1
 datasets==4.0.0
 onnxoptimizer==0.3.13
+pyarrow==19.0.1
+soundfile==0.13.1
+optimum-onnx==0.1.0
