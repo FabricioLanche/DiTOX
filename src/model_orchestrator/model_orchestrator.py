@@ -100,9 +100,16 @@ class ModelOrchestrator:
             if model_id in catalog_by_id
         ]
 
-    def get_models(self, problematic_models=None):
-        """Yield selected models with their loaded model and runtime metadata."""
+    def get_models(
+        self,
+        problematic_models=None,
+        *,
+        metadata_only=False,
+        exclude_models=None,
+    ):
+        """Yield selected model metadata and, unless requested otherwise, artifacts."""
         problematic_models = set(problematic_models or [])
+        exclude_models = set(exclude_models or [])
         name_filters = self.general_config["name_filters"]
         exact_match = self.general_config["match_filter_exact"]
         selected_tags = self.hub_config["tags_of_models_to_consider"]
@@ -119,6 +126,8 @@ class ModelOrchestrator:
             model_opset = int(model_obj.opset)
             model_name_opset = f"{model_name}-{model_opset}"
 
+            if model_name_opset in exclude_models:
+                continue
             if self.check_prob_models and model_name_opset not in problematic_models:
                 continue
             if model_name_opset in excluded_names:
@@ -165,6 +174,22 @@ class ModelOrchestrator:
                 model_obj,
                 self.hub_config["cache_folder_rel_path"],
             )
+            source_key = self.manifest_source_keys.get(
+                (model_name, model_opset), model_name_opset
+            )
+            if metadata_only:
+                yield {
+                    "model_no": model_no,
+                    "model_name": model_name,
+                    "model_name_opset": model_name_opset,
+                    "opset": model_opset,
+                    "source_key": source_key,
+                    "tags": list(tags),
+                    "model_config": model_config,
+                    "model_path": model_path,
+                    "shape_dict": {first_input["name"]: model_shape},
+                }
+                continue
             model_stage = (
                 self.pipeline_trace.stage(
                     "model.onnx_load", model=model_name_opset
@@ -190,10 +215,6 @@ class ModelOrchestrator:
             with hash_stage:
                 with open(model_path, "rb") as model_file:
                     original_hash = hashlib.md5(model_file.read()).hexdigest()
-            source_key = self.manifest_source_keys.get(
-                (model_name, model_opset), model_name_opset
-            )
-
             relax_model = None
             relax_input_names = None
             base_executable = None

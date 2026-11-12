@@ -61,6 +61,7 @@ You can also set it to true and define the desired passes to run by setting them
 - If you enable `check_reports_for_problematic_models`, DiTOX will check for problematic models in a file with name set in `report_file_base_rel_path`. If a model is marked as "different" in this file, it will then perform per-pass fault localization + differential testing for this model, by applying each available pass, sequentially.
 - `include_certainties` is an experimental feature that includes certainty percentages. It is currently supported for classification models.
 - `enable_kt_on_one_dim_tensor` is another experimental feature that allows for Kendall Tau Correlation Coefficient to be enabled or disabled for (batch, dim) tensors.
+- The example run configurations enable model-level checkpoints in `results/checkpoints`. A rerun resumes only when the configuration, image inputs, model catalog, and pipeline source match. A model is checkpointed after all its configured batches finish; if interrupted during a model, that model is retried from its beginning. Set `checkpoint.resume` to `false` to start a fresh run, or `checkpoint.enabled` to `false` to disable checkpoints.
 
 ## Demonstration
 For demonstration purposes, we set the configuration to fetch and run all `YOLO` (object detection) and `MobileNet` (classification) models from ONNX hub.

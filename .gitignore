@@ -2,6 +2,7 @@
 result_tvm_tmp/
 tvm_docs.pdf
 models_cache/
+*/logs
 configs/dataset/COCO/*.jpg
 results/
 __pycache__
