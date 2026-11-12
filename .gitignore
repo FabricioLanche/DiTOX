@@ -3,6 +3,10 @@ result_tvm_tmp/
 tvm_docs.pdf
 models_cache/
 */logs
-configs/dataset/COCO/*.jpg
+configs/dataset/**/*.jpg
 results/
 __pycache__
+configs/dataset/SQuAD_v2/*.parquet
+configs/dataset/IMDB/*.parquet
+configs/dataset/LibriSpeech/*.parquet
+configs/dataset/COCO_Keypoints/*.parquet

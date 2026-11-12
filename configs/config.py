@@ -18,6 +18,7 @@ class PipelineConfig:
     tvm: dict[str, Any]
     text: dict[str, Any]
     checkpoint: dict[str, Any]
+    task: dict[str, Any]
     backend: str
 
 
@@ -47,6 +48,7 @@ def load_pipeline_config(config_path=None):
         section
         for section in required_sections
         + ("runtime", "tvm", "logging", "text", "checkpoint")
+        + ("task",)
         if section in data and not isinstance(data[section], dict)
     ]
     if invalid_sections:
@@ -54,6 +56,24 @@ def load_pipeline_config(config_path=None):
             f"Pipeline configuration sections must be JSON objects "
             f"({invalid_sections}): {path}"
         )
+
+    task = data.get("task", {})
+    if task:
+        task_type = task.get("type")
+        if task_type not in {"body_recognition", "speech_recognition"}:
+            raise ValueError(
+                "task.type must be 'body_recognition' or 'speech_recognition'."
+            )
+        task_path_keys = (
+            ("dataset_path", "images_dir")
+            if task_type == "body_recognition"
+            else ("dataset_path",)
+        )
+        for key in task_path_keys:
+            if not isinstance(task.get(key), str) or not task[key].strip():
+                raise ValueError(f"task.{key} must be a non-empty path.")
+        if "limit" in task and (type(task["limit"]) is not int or task["limit"] < 1):
+            raise ValueError("task.limit must be a positive integer.")
 
     general = data["general"]
     runtime = data.get("runtime", {})
@@ -93,6 +113,7 @@ def load_pipeline_config(config_path=None):
         tvm=data.get("tvm", {}),
         text=data.get("text", {}),
         checkpoint=checkpoint,
+        task=data.get("task", {}),
         backend=general.get(
             "backend", data.get("runtime", {}).get("backend", "ort")
         ),

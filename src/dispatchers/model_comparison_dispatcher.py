@@ -1,12 +1,19 @@
 import numpy as np
 
 from src.metric_comparison.comparators.classification import ClassificationComparator
+from src.metric_comparison.comparators.body import BodyComparator
 from src.metric_comparison.comparators.ssd import SSDComparator
+from src.metric_comparison.comparators.speech import SpeechComparator
 from src.metric_comparison.comparators.text import TextComparator
 from src.metric_comparison.comparators.yolov3 import YOLOV3Comparator
 from src.metric_comparison.evaluators.object_detection import ObjectDetectionEvaluator
 from src.metric_comparison.extractors.ssd_extractor import SSDExtractor
 from src.metric_comparison.extractors.yolov2_extractor import YOLOV2Extractor
+from src.metric_comparison.evaluators.comparator import (
+    character_err_rate,
+    percentage_corr_kekpoints,
+    word_err_rate,
+)
 
 
 class ModelComparisonDispatcher:
@@ -28,7 +35,67 @@ class ModelComparisonDispatcher:
         model,
         text_runner=None,
     ):
-        if "text" in tags and text_runner is not None:
+        if "speech_recognition" in tags or "speech" in tags:
+            paired_ids = [key for key in base_model_out if key in opt_model_out]
+            if not paired_ids:
+                raise ValueError("Speech outputs have no matching sample IDs.")
+            base_wer_values, base_cer_values = [], []
+            opt_wer_values, opt_cer_values = [], []
+            for sample_id in paired_ids:
+                base_text = base_model_out[sample_id]
+                opt_text = opt_model_out[sample_id]
+                if not isinstance(base_text, dict) or not isinstance(opt_text, dict):
+                    raise TypeError("Speech task runners must return prediction/reference per sample.")
+                reference = base_text.get("reference")
+                if not isinstance(reference, str) or reference != opt_text.get("reference"):
+                    raise ValueError(f"Speech reference is missing or inconsistent for {sample_id}.")
+                base_wer_values.append(word_err_rate(reference, base_text["prediction"]))
+                base_cer_values.append(character_err_rate(reference, base_text["prediction"]))
+                opt_wer_values.append(word_err_rate(reference, opt_text["prediction"]))
+                opt_cer_values.append(character_err_rate(reference, opt_text["prediction"]))
+            evaluation = {
+                "base_wer": float(np.mean(base_wer_values)),
+                "base_cer": float(np.mean(base_cer_values)),
+                "wer": float(np.mean(opt_wer_values)),
+                "cer": float(np.mean(opt_cer_values)),
+            }
+            SpeechComparator(evaluation, model_comparisons).update(
+                model_name_opset, current_pass
+            )
+
+        elif "body_recognition" in tags or "body" in tags:
+            paired_ids = [key for key in base_model_out if key in opt_model_out]
+            if not paired_ids:
+                raise ValueError("Pose outputs have no matching sample IDs.")
+            pck_values = []
+            for sample_id in paired_ids:
+                base_pose = base_model_out[sample_id]
+                opt_pose = opt_model_out[sample_id]
+                if not isinstance(base_pose, dict) or not isinstance(opt_pose, dict):
+                    raise TypeError("Pose task runners must return predicted and reference keypoints per sample.")
+                scale = float(base_pose.get("scale", 0))
+                if not np.isclose(scale, float(opt_pose.get("scale", scale))):
+                    raise ValueError(f"Pose scale differs for sample {sample_id}.")
+                reference = np.asarray(base_pose["reference_keypoints"])
+                if not np.array_equal(reference, np.asarray(opt_pose["reference_keypoints"])):
+                    raise ValueError(f"Pose reference differs for sample {sample_id}.")
+                base_pck = percentage_corr_kekpoints(
+                    reference, base_pose["keypoints"], scale
+                )
+                opt_pck = percentage_corr_kekpoints(
+                    reference, opt_pose["keypoints"], scale
+                )
+                pck_values.append(
+                    {"base": base_pck, "optimized": opt_pck}
+                )
+            BodyComparator({
+                "base_pck": float(np.mean([value["base"] for value in pck_values])),
+                "pck": float(np.mean([value["optimized"] for value in pck_values])),
+            }, model_comparisons).update(
+                model_name_opset, current_pass
+            )
+
+        elif "text" in tags and text_runner is not None:
             evaluation = text_runner.evaluate(base_model_out, opt_model_out)
             comparator = TextComparator(evaluation, model_comparisons)
             comparator.update(model_name_opset, current_pass)
