@@ -17,6 +17,7 @@ class PipelineConfig:
     logging: dict[str, Any]
     tvm: dict[str, Any]
     text: dict[str, Any]
+    checkpoint: dict[str, Any]
     backend: str
 
 
@@ -44,7 +45,8 @@ def load_pipeline_config(config_path=None):
 
     invalid_sections = [
         section
-        for section in required_sections + ("runtime", "tvm", "logging", "text")
+        for section in required_sections
+        + ("runtime", "tvm", "logging", "text", "checkpoint")
         if section in data and not isinstance(data[section], dict)
     ]
     if invalid_sections:
@@ -54,6 +56,31 @@ def load_pipeline_config(config_path=None):
         )
 
     general = data["general"]
+    runtime = data.get("runtime", {})
+    tvm_runtime = runtime.get("tvm", {})
+    if not isinstance(tvm_runtime, dict):
+        raise ValueError("runtime.tvm must be an object.")
+    model_workers = tvm_runtime.get("model_workers", 1)
+    threads_per_worker = tvm_runtime.get("threads_per_worker", 0)
+    if type(model_workers) is not int or model_workers < 1:
+        raise ValueError("runtime.tvm.model_workers must be a positive integer.")
+    if type(threads_per_worker) is not int or threads_per_worker < 0:
+        raise ValueError(
+            "runtime.tvm.threads_per_worker must be a non-negative integer."
+        )
+    checkpoint = data.get("checkpoint", {})
+    if type(checkpoint.get("enabled", True)) is not bool:
+        raise ValueError("checkpoint.enabled must be a boolean.")
+    if type(checkpoint.get("resume", True)) is not bool:
+        raise ValueError("checkpoint.resume must be a boolean.")
+    checkpoint_directory = checkpoint.get("directory", "results/checkpoints")
+    if not isinstance(checkpoint_directory, str) or not checkpoint_directory.strip():
+        raise ValueError("checkpoint.directory must be a non-empty string.")
+    checkpoint = {
+        "enabled": checkpoint.get("enabled", True),
+        "resume": checkpoint.get("resume", True),
+        "directory": checkpoint_directory,
+    }
 
     return PipelineConfig(
         path=path.resolve(),
@@ -61,10 +88,11 @@ def load_pipeline_config(config_path=None):
         general=general,
         hub=data["hub"],
         optimizer=data["optimizer"],
-        runtime=data.get("runtime", {}),
+        runtime=runtime,
         logging=data.get("logging", data.get("runtime", {}).get("logging", {})),
         tvm=data.get("tvm", {}),
         text=data.get("text", {}),
+        checkpoint=checkpoint,
         backend=general.get(
             "backend", data.get("runtime", {}).get("backend", "ort")
         ),

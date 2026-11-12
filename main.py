@@ -1,8 +1,10 @@
 import logging
+import json
+import multiprocessing
+import os
 import sys
-from os import listdir
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from pathlib import Path
-from os.path import isfile, join
 
 project_root = Path(__file__).resolve().parent
 if str(project_root) not in sys.path:
@@ -14,8 +16,231 @@ from src.model_orchestrator.tvm_builder import TVMBuilder
 from src.dispatchers import BackendDispatcher, ModelComparisonDispatcher
 from src.reports.logger import configure_pipeline_logger
 from src.reports import ReportManager
+from src.reports.checkpoint_manager import CheckpointManager
 from src.runner.preprocessing.prepared_image_inputs import PreparedImageInputs
 from src.runner.preprocessing.text_inputs import TextInputProvider
+
+
+def _available_cpu_count():
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except (AttributeError, OSError):
+        return max(1, os.cpu_count() or 1)
+
+
+def _discover_image_paths(images_folder, pipeline_trace):
+    from PIL import Image
+
+    images_folder = Path(images_folder)
+    supported_extensions = {
+        extension.lower() for extension in Image.registered_extensions()
+    }
+    image_paths = []
+    ignored_files = []
+
+    for path in sorted(images_folder.iterdir()):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() not in supported_extensions:
+            ignored_files.append(path.name)
+            continue
+        image_paths.append(str(path))
+
+    pipeline_trace.event(
+        "images.discovered",
+        directory=str(images_folder),
+        image_count=len(image_paths),
+        ignored_file_count=len(ignored_files),
+    )
+    if ignored_files:
+        print(
+            f"Ignored {len(ignored_files)} non-image or invalid file(s) "
+            f"in {images_folder}."
+        )
+    return image_paths
+
+
+def _run_parallel_vision_models(
+    model_specs,
+    batch_states,
+    *,
+    run_config,
+    report_manager,
+    pipeline_trace,
+    model_workers,
+    threads_per_worker,
+    manifest_categories,
+    manifest_missing_models,
+    manifest_excluded_by_config,
+    reports,
+    completed_models,
+    checkpoint_manager,
+):
+    from src.dispatchers.model_worker import run_model_task
+
+    model_workers = min(model_workers, len(model_specs))
+    reports = reports or [
+        report_manager.new_report(
+            manifest_categories,
+            manifest_missing_models,
+            manifest_excluded_by_config,
+        )
+        for _ in batch_states
+    ]
+    completed_models = set(completed_models or [])
+    if model_workers == 0:
+        for batch_index, batch_state in enumerate(batch_states):
+            report_manager.save(batch_state["report_path"], reports[batch_index])
+        return
+    cpu_count = _available_cpu_count()
+    if threads_per_worker == 0:
+        threads_per_worker = max(1, cpu_count // model_workers)
+    task_items = iter(
+        (
+            model_spec,
+            [
+                batch_index
+                for batch_index, batch_state in enumerate(batch_states)
+                if not batch_state["problematic_models"]
+                or model_spec["model_name_opset"]
+                in batch_state["problematic_models"]
+            ],
+        )
+        for model_spec in model_specs
+        if any(
+            not batch_state["problematic_models"]
+            or model_spec["model_name_opset"]
+            in batch_state["problematic_models"]
+            for batch_state in batch_states
+        )
+    )
+
+    def make_task(model_spec, batch_indexes):
+        return {
+            "config_path": str(run_config.path),
+            "project_root": str(Path(__file__).resolve().parent),
+            "model_spec": model_spec,
+            "threads_per_worker": threads_per_worker,
+            "batch_indexes": batch_indexes,
+            "batch_states": [
+                {
+                    **batch_states[batch_index],
+                    "images_paths": [
+                        str(path)
+                        for path in batch_states[batch_index]["images_paths"]
+                    ],
+                    "manifest_categories": manifest_categories,
+                    "manifest_missing_models": manifest_missing_models,
+                    "manifest_excluded_by_config": manifest_excluded_by_config,
+                }
+                for batch_index in batch_indexes
+            ],
+        }
+
+    def merge_task_result(model_spec, batch_indexes, result):
+        model_results = result["reports"]
+        if checkpoint_manager is not None:
+            checkpoint_manager.record_model(
+                model_spec["model_name_opset"],
+                {
+                    batch_states[batch_index]["report_path"]: model_result
+                    for batch_index, model_result in zip(
+                        batch_indexes, model_results
+                    )
+                },
+            )
+        completed_models.add(model_spec["model_name_opset"])
+        for batch_index, model_result in zip(batch_indexes, model_results):
+            ReportManager.merge_model_result(reports[batch_index], model_result)
+            pipeline_trace.event(
+                "model.worker.completed",
+                model=model_spec["model_name_opset"],
+                batch=batch_states[batch_index]["report_path"].stem,
+            )
+            report_manager.save(
+                batch_states[batch_index]["report_path"], reports[batch_index]
+            )
+
+    with pipeline_trace.stage(
+        "models.parallel_run",
+        model_count=len(model_specs),
+        max_workers=model_workers,
+        threads_per_worker=threads_per_worker,
+    ):
+        with ProcessPoolExecutor(
+            max_workers=model_workers,
+            mp_context=multiprocessing.get_context("spawn"),
+        ) as executor:
+            pending = {}
+
+            def submit_next():
+                try:
+                    model_spec, batch_indexes = next(task_items)
+                except StopIteration:
+                    return False
+                task = make_task(model_spec, batch_indexes)
+                pipeline_trace.event(
+                    "model.worker.submitted",
+                    model=model_spec["model_name_opset"],
+                    batches=[
+                        batch_states[index]["report_path"].stem
+                        for index in batch_indexes
+                    ],
+                )
+                future = executor.submit(run_model_task, task)
+                pending[future] = (model_spec, batch_indexes)
+                return True
+
+            for _ in range(min(model_workers * 2, len(model_specs))):
+                if not submit_next():
+                    break
+
+            while pending:
+                completed, _ = wait(pending, return_when=FIRST_COMPLETED)
+                for future in completed:
+                    model_spec, batch_indexes = pending.pop(future)
+                    try:
+                        result = future.result()
+                    except Exception as error:
+                        model_name_opset = model_spec["model_name_opset"]
+                        worker_results = {}
+                        for batch_index in batch_indexes:
+                            worker_result = report_manager.new_report()
+                            worker_result["failed_models"].append(model_name_opset)
+                            worker_result["conversion_errors"][model_name_opset] = {
+                                "worker": repr(error)
+                            }
+                            worker_results[
+                                batch_states[batch_index]["report_path"]
+                            ] = worker_result
+                            reports[batch_index]["failed_models"].append(
+                                model_name_opset
+                            )
+                            reports[batch_index]["conversion_errors"][
+                                model_name_opset
+                            ] = {"worker": repr(error)}
+                            report_manager.save(
+                                batch_states[batch_index]["report_path"],
+                                reports[batch_index],
+                            )
+                            pipeline_trace.event(
+                                "model.worker.failed",
+                                level=logging.ERROR,
+                                model=model_name_opset,
+                                batch=batch_states[batch_index]["report_path"].stem,
+                                error=repr(error),
+                            )
+                        if checkpoint_manager is not None:
+                            checkpoint_manager.record_model(
+                                model_name_opset, worker_results
+                            )
+                        completed_models.add(model_name_opset)
+                    else:
+                        merge_task_result(model_spec, batch_indexes, result)
+                    submit_next()
+
+    for batch_index, batch_state in enumerate(batch_states):
+        report_manager.save(batch_state["report_path"], reports[batch_index])
 
 
 def _process_model_batch(
@@ -229,7 +454,7 @@ def main():
     include_certainties = general_config["include_certainties"]
     enable_kt_on_one_dim_tensor = general_config["enable_kt_on_one_dim_tensor"]
 
-    script_dir = str(Path(__file__).resolve().parent.parent)
+    script_dir = str(project_root)
     pipeline_trace = configure_pipeline_logger(
         script_dir, run_config.logging
     )
@@ -289,12 +514,7 @@ def main():
     manifest_missing_models = model_orchestrator.manifest_missing_models
     manifest_excluded_by_config = model_orchestrator.manifest_excluded_by_config
  
-    all_images_paths = [
-        join(images_folder, filename)
-        for filename in listdir(images_folder)
-        if isfile(join(images_folder, filename))
-    ]
-    all_images_paths.sort()
+    all_images_paths = _discover_image_paths(images_folder, pipeline_trace)
 
     images_chunk = images_config["images_chunk"]
     starts_from = images_config["starts_from"]
@@ -307,14 +527,6 @@ def main():
         report_path = report_manager.chunk_path(starts_from, ends_at)
         print(" ---- Input Batch: " + str(starts_from) + " to " + str(ends_at))
 
-        problematic_models = None
-        if check_prob_models:
-            problematic_models = report_manager.problematic_models(report_path)
-            print(
-                f"Isolating passes for {len(problematic_models)} problematic models "
-                f"from {report_path.name}"
-            )
-
         batch_states.append(
             {
                 "images_paths": images_paths,
@@ -322,7 +534,7 @@ def main():
                 "ends_at": ends_at,
                 "text_prompts": None,
                 "report_path": report_path,
-                "problematic_models": problematic_models,
+                "problematic_models": None,
                 "report_started": False,
                 "manifest_categories": manifest_categories,
                 "manifest_missing_models": manifest_missing_models,
@@ -339,22 +551,182 @@ def main():
         starts_from += images_chunk
         ends_at += images_chunk
 
-    if batch_states:
+    checkpoint_manager = None
+    completed_models = set()
+    checkpoint_settings = run_config.checkpoint
+    if checkpoint_settings.get("enabled", True):
+        model_ids = [
+            f"{model.model}-{int(model.opset)}"
+            for model in model_orchestrator.all_models
+        ]
+        with run_config.path.open("r", encoding="utf-8") as config_file:
+            config_data = json.load(config_file)
+        checkpoint_manager = CheckpointManager(
+            script_dir,
+            run_config.path,
+            config_data,
+            all_images_paths,
+            model_ids,
+            checkpoint_settings,
+        )
+
+    if checkpoint_manager is not None and checkpoint_manager.resumed:
+        completed_models = checkpoint_manager.completed_models
+        stored_reports = checkpoint_manager.reports_for(
+            [state["report_path"] for state in batch_states]
+        )
+        for batch_state in batch_states:
+            report_path = batch_state["report_path"]
+            report = stored_reports.get(
+                str(report_path),
+                report_manager.new_report(
+                    manifest_categories,
+                    manifest_missing_models,
+                    manifest_excluded_by_config,
+                ),
+            )
+            batch_state["problematic_models"] = (
+                checkpoint_manager.problematic_models_for(report_path)
+            )
+            report_manager.save(report_path, report)
+            batch_state["report_started"] = True
+        pipeline_trace.event(
+            "checkpoint.resumed",
+            completed_models=len(completed_models),
+            checkpoint=str(checkpoint_manager.state_path),
+        )
+    else:
+        report_templates = {}
+        problematic_models_by_report = {}
+        for batch_state in batch_states:
+            report_path = batch_state["report_path"]
+            if check_prob_models:
+                problematic_models = (
+                    report_manager.problematic_models(report_path)
+                    if report_path.is_file()
+                    else set()
+                )
+                batch_state["problematic_models"] = problematic_models
+                print(
+                    f"Isolating passes for {len(problematic_models)} problematic models "
+                    f"from {report_path.name}"
+                )
+                problematic_models_by_report[str(report_path)] = sorted(
+                    problematic_models
+                )
+            else:
+                problematic_models_by_report[str(report_path)] = None
+
+            report_templates[str(report_path)] = report_manager.new_report(
+                manifest_categories,
+                manifest_missing_models,
+                manifest_excluded_by_config,
+            )
+            if checkpoint_manager is not None:
+                batch_state["report_started"] = True
+
+        if checkpoint_manager is not None:
+            checkpoint_manager.initialize(
+                report_templates,
+                problematic_models_by_report,
+            )
+            for batch_state in batch_states:
+                report_manager.save(
+                    batch_state["report_path"],
+                    report_templates[str(batch_state["report_path"])],
+                )
+            pipeline_trace.event(
+                "checkpoint.started",
+                checkpoint=str(checkpoint_manager.state_path),
+            )
+
+    model_workers = run_config.runtime.get("tvm", {}).get("model_workers", 1)
+    threads_per_worker = run_config.runtime.get("tvm", {}).get(
+        "threads_per_worker", 0
+    )
+    parallel_vision = (
+        run_config.backend == "tvmr"
+        and model_workers > 1
+        and "text" not in hub_config.get("tags", [])
+    )
+    checkpoint_reports = (
+        checkpoint_manager.reports_for(
+            [state["report_path"] for state in batch_states]
+        )
+        if checkpoint_manager is not None
+        else None
+    )
+
+    if batch_states and parallel_vision:
+        problematic_union = None
+        if check_prob_models:
+            problematic_union = set().union(
+                *(state["problematic_models"] for state in batch_states)
+            )
+        model_specs = [
+            model_spec
+            for model_spec in model_orchestrator.get_models(
+                problematic_union,
+                metadata_only=True,
+                exclude_models=completed_models,
+            )
+            if "text" not in model_spec["tags"]
+        ]
+        _run_parallel_vision_models(
+            model_specs,
+            batch_states,
+            run_config=run_config,
+            report_manager=report_manager,
+            pipeline_trace=pipeline_trace,
+            model_workers=model_workers,
+            threads_per_worker=threads_per_worker,
+            manifest_categories=manifest_categories,
+            manifest_missing_models=manifest_missing_models,
+            manifest_excluded_by_config=manifest_excluded_by_config,
+            reports=[
+                checkpoint_reports.get(
+                    str(state["report_path"]),
+                    report_manager.new_report(
+                        manifest_categories,
+                        manifest_missing_models,
+                        manifest_excluded_by_config,
+                    ),
+                )
+                for state in batch_states
+            ]
+            if checkpoint_manager is not None
+            else None,
+            completed_models=completed_models,
+            checkpoint_manager=checkpoint_manager,
+        )
+    elif batch_states:
         problematic_union = None
         if check_prob_models:
             problematic_union = set().union(
                 *(state["problematic_models"] for state in batch_states)
             )
 
-        for model_data in model_orchestrator.get_models(problematic_union):
-            for batch_state in batch_states:
-                if (
-                    check_prob_models
-                    and model_data["model_name_opset"]
-                    not in batch_state["problematic_models"]
-                ):
-                    continue
+        for model_data in model_orchestrator.get_models(
+            problematic_union,
+            exclude_models=completed_models,
+        ):
+            eligible_batches = [
+                batch_state
+                for batch_state in batch_states
+                if not check_prob_models
+                or model_data["model_name_opset"]
+                in batch_state["problematic_models"]
+            ]
+            if not eligible_batches:
+                continue
 
+            model_results = {}
+            for batch_state in eligible_batches:
+                before_report = (
+                    report_manager.load(batch_state["report_path"])
+                    if checkpoint_manager is not None
+                    else None
+                )
                 pipeline_trace.event(
                     "model.selected",
                     model=model_data["model_name_opset"],
@@ -375,6 +747,25 @@ def main():
                     pipeline_trace=pipeline_trace,
                     text_input_provider=text_input_provider,
                 )
+                if checkpoint_manager is not None:
+                    after_report = report_manager.load(batch_state["report_path"])
+                    model_results[batch_state["report_path"]] = (
+                        ReportManager.extract_model_result(
+                            before_report,
+                            after_report,
+                            model_data["model_name_opset"],
+                        )
+                    )
+
+            if checkpoint_manager is not None and model_results:
+                checkpoint_manager.record_model(
+                    model_data["model_name_opset"], model_results
+                )
+                completed_models.add(model_data["model_name_opset"])
+                pipeline_trace.event(
+                    "checkpoint.model_saved",
+                    model=model_data["model_name_opset"],
+                )
 
         for batch_state in batch_states:
             if not batch_state["report_started"]:
@@ -385,6 +776,12 @@ def main():
                 )
                 report_manager.save(batch_state["report_path"], empty_report)
 
+    if checkpoint_manager is not None:
+        checkpoint_manager.mark_run_completed()
+        pipeline_trace.event(
+            "checkpoint.completed",
+            completed_models=len(checkpoint_manager.completed_models),
+        )
     pipeline_trace.event("pipeline.completed", batch_count=len(batch_states))
 
 if __name__ == "__main__":
