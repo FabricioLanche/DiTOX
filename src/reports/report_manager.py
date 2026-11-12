@@ -1,4 +1,6 @@
 import json
+import os
+import tempfile
 from pathlib import Path
 
 
@@ -50,8 +52,7 @@ class ReportManager:
 
     @staticmethod
     def problematic_models(report_path):
-        with Path(report_path).open("r", encoding="utf-8") as report_file:
-            report = json.load(report_file)
+        report = ReportManager.load(report_path)
 
         return (
             set(report.get("failed_models", []))
@@ -69,8 +70,80 @@ class ReportManager:
         )
 
     @staticmethod
+    def load(report_path):
+        with Path(report_path).open("r", encoding="utf-8") as report_file:
+            return json.load(report_file)
+
+    @staticmethod
     def save(report_path, report):
         report_path = Path(report_path)
         report_path.parent.mkdir(parents=True, exist_ok=True)
-        with report_path.open("w", encoding="utf-8") as report_file:
-            json.dump(report, report_file, indent=2)
+        temporary_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=report_path.parent,
+                prefix=f".{report_path.name}-",
+                suffix=".tmp",
+                delete=False,
+            ) as report_file:
+                temporary_path = Path(report_file.name)
+                json.dump(report, report_file, indent=2)
+                report_file.flush()
+                os.fsync(report_file.fileno())
+            os.replace(temporary_path, report_path)
+        finally:
+            if temporary_path is not None:
+                temporary_path.unlink(missing_ok=True)
+
+    @staticmethod
+    def extract_model_result(before, after, model_id):
+        """Return only the report contribution added while processing one model."""
+        result = {
+            key: after.get(key, 0) - before.get(key, 0)
+            for key in (
+                "no_dissimilar",
+                "base_models_run",
+                "model_instances_run",
+                "failed_conversions_no",
+            )
+        }
+        for key in ("skipped_models", "failed_models"):
+            old_length = len(before.get(key, []))
+            result[key] = after.get(key, [])[old_length:]
+        if model_id in after.get("conversion_errors", {}):
+            result["conversion_errors"] = {
+                model_id: after["conversion_errors"][model_id]
+            }
+        if model_id in after:
+            result[model_id] = after[model_id]
+        return result
+
+    @staticmethod
+    def merge_model_result(report, model_result):
+        """Merge one isolated model report into a coordinator-owned report."""
+        counter_keys = (
+            "no_dissimilar",
+            "base_models_run",
+            "model_instances_run",
+            "failed_conversions_no",
+        )
+        list_keys = ("skipped_models", "failed_models")
+        header_keys = {
+            "manifest_models_expected",
+            "manifest_models_not_found",
+            "manifest_models_excluded_by_config",
+            "manifest_models_selected_by_config",
+        }
+
+        for key in counter_keys:
+            report[key] = report.get(key, 0) + model_result.get(key, 0)
+        for key in list_keys:
+            report.setdefault(key, []).extend(model_result.get(key, []))
+        report.setdefault("conversion_errors", {}).update(
+            model_result.get("conversion_errors", {})
+        )
+        for key, value in model_result.items():
+            if key not in {*counter_keys, *list_keys, "conversion_errors", *header_keys}:
+                report[key] = value

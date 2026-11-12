@@ -1,6 +1,5 @@
 import numpy as np
 from src.metric_comparison.evaluators.evalgenerator import EvaluationGenerator
-from src.runner.tvm_builder import TVMBuilder
 
 class TVMRunner:
     def __init__(self, config, topK=10):
@@ -22,50 +21,22 @@ class TVMRunner:
             enable_kt_on_one_dim_tensor,
         )
 
-    def compile_tvm_model(self, relax_model, optimized=False, relax_pipeline=None):
+    def _load_executable(self, executable, input_names):
         import tvm
         from tvm import relax
 
-        self.virtual_machine = None
-        self.device = None
-        self.tensor = None
-        self.input_names = None
-
-        target_cls = tvm.target.Target
-        cpu = tvm.cpu
+        device_id = self.config.get("device_id", 0)
+        device = tvm.cpu(device_id)
         self.tensor = tvm.runtime.tensor
 
-        target = target_cls("llvm")
-        if relax_pipeline is None:
-            relax_pipeline = (
-                TVMBuilder.get_default_relax_pipeline()
-                if not optimized
-                else TVMBuilder.get_optimized_relax_pipeline()
-            )
-        executable = tvm.compile(
-            relax_model,
-            target=target,
-            relax_pipeline=relax_pipeline,
-        )
-        device_id = self.config.get("device_id", 0)
-        device = cpu(device_id)
-
         virtual_machine = relax.VirtualMachine(executable, device)
-        input_names = []
-        for parameter in relax_model["main"].params:
-            name = getattr(parameter, "name_hint", None) or getattr(
-                parameter, "name", None
-            )
-            if name is None:
-                raise RuntimeError("Unable to determine a Relax model input name.")
-            input_names.append(name)
         self.virtual_machine = virtual_machine
         self.device = device
         self.input_names = input_names
 
     def execute_tvm_model(self, inputs):
         if self.virtual_machine is None:
-            raise RuntimeError("Compile a Relax model before executing it.")
+            raise RuntimeError("Load a TVM executable before executing it.")
 
         if isinstance(inputs, dict):
             missing_inputs = [name for name in self.input_names if name not in inputs]
@@ -101,38 +72,38 @@ class TVMRunner:
             for output in output_values
         ]
 
-    def execute_relax_model(self, relax_model, images_paths, config, print_percentage=True,
-                            include_certainties=False, optimized=False,
-                            relax_pipeline=None):
+    def execute_tvm_executable(self, executable, images_paths, config, input_names,
+                               print_percentage=True, include_certainties=False,
+                               prepared_image_inputs=None):
         from pathlib import Path
         from PIL import Image
         from scipy.special import softmax
-        from src.runner.preprocessing.model_preprocessor import ModelPreprocessor
 
-        self.compile_tvm_model(
-            relax_model,
-            optimized=optimized,
-            relax_pipeline=relax_pipeline,
-        )
+        self._load_executable(executable, input_names)
 
         input_dimension = config.get("input_dimension", [224, 224])
         if len(input_dimension) == 0:
             input_dimension = [224, 224]
         input_shape = config.get("input_shape", [1, 3, 224, 224])
 
-        preprocessing_data = {
-            "input": input_shape,
-            "input_dimension": input_dimension,
-            "library": None
-        }
-        model_preprocessor = ModelPreprocessor(preprocessing_data)
+        if prepared_image_inputs is None:
+            from src.runner.preprocessing.model_preprocessor import ModelPreprocessor
+
+            preprocessing_data = {
+                "input": input_shape,
+                "input_dimension": input_dimension,
+                "library": None,
+            }
+            model_preprocessor = ModelPreprocessor(preprocessing_data)
 
         output_data = {}
         count = 0
         images_length = len(images_paths)
         step = (images_length // 4) if images_length > 10 else images_length
 
-        input_name = config.get("input_name", self.input_names[0] if self.input_names else "data")
+        input_name = config.get(
+            "input_name", self.input_names[0] if self.input_names else "data"
+        )
 
         for img_path in images_paths:
             if print_percentage and step > 0 and count % step == 0:
@@ -140,21 +111,25 @@ class TVMRunner:
             count += 1
 
             img_name = Path(img_path).name
-            img = Image.open(img_path)
+            if prepared_image_inputs is None:
+                img = Image.open(img_path)
 
-            if len(input_shape) > 3 and (input_shape[1] == 1 or input_shape[3] == 1):
-                img = img.convert("L")
+                if len(input_shape) > 3 and (input_shape[1] == 1 or input_shape[3] == 1):
+                    img = img.convert("L")
+                else:
+                    if img.mode in ("L", "BGR"):
+                        img = img.convert("RGB")
+
+                img = img.resize(input_dimension)
+                img = model_preprocessor.preprocess(config.get("model_name", ""), img, True)
+
+                if len(input_shape) < len(img.shape):
+                    img = np.squeeze(img)
+                input_value = img.astype(np.float32)
             else:
-                if img.mode in ("L", "BGR"):
-                    img = img.convert("RGB")
+                input_value = prepared_image_inputs.get(img_path)
 
-            img = img.resize(input_dimension)
-            img = model_preprocessor.preprocess(config.get("model_name", ""), img, True)
-
-            if len(input_shape) < len(img.shape):
-                img = np.squeeze(img)
-
-            input_dict = {input_name: img.astype(np.float32)}
+            input_dict = {input_name: input_value}
             outputs = self.execute_tvm_model(input_dict)
 
             if len(outputs) == 1 and np.array(outputs).ndim == 3:
@@ -169,4 +144,12 @@ class TVMRunner:
             else:
                 output_data[img_name] = outputs
 
+        return output_data
+
+    def execute_tvm_inputs(self, executable, input_names, named_inputs):
+        """Execute arbitrary named tensor inputs using a compiled Relax module."""
+        self._load_executable(executable, input_names)
+        output_data = {}
+        for sample_id, inputs in named_inputs.items():
+            output_data[sample_id] = self.execute_tvm_model(inputs)
         return output_data
