@@ -135,4 +135,32 @@ class ONNXRunner:
             output_data[img_name] = self.format_outputs(output, include_certainties)
 
         return output_data
+
+    def execute_onnx_inputs(self, onnx_model, named_inputs):
+        """Execute arbitrary named tensor inputs (audio, keypoints, or images)."""
+        sess_options = ort.SessionOptions()
+        sess_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_DISABLE_ALL
+        session = ort.InferenceSession(
+            onnx_model.SerializeToString(),
+            sess_options=sess_options,
+            providers=["CPUExecutionProvider"],
+        )
+        expected = {item.name for item in session.get_inputs()}
+        outputs = {}
+        for sample_id, inputs in named_inputs.items():
+            missing = expected - set(inputs)
+            extra = set(inputs) - expected
+            if missing or extra:
+                raise ValueError(
+                    f"ONNX input mismatch for {sample_id}: missing={sorted(missing)}, "
+                    f"unexpected={sorted(extra)}"
+                )
+            outputs[sample_id] = session.run(
+                None,
+                {
+                    name: np.ascontiguousarray(value)
+                    for name, value in inputs.items()
+                },
+            )
+        return outputs
     

@@ -63,7 +63,7 @@ def word_err_rate(x, y):
         for j, candidate in enumerate(hypothesis, 1):
             row[j] = min(row[j - 1] + 1, previous[j] + 1,
                          previous[j - 1] + (word != candidate))
-    return row[-1] / len(reference)
+    return row[-1] / max(len(reference), 1)
 
 
 def character_err_rate(x, y):
@@ -74,10 +74,23 @@ def character_err_rate(x, y):
         for j, candidate in enumerate(y, 1):
             row[j] = min(row[j - 1] + 1, previous[j] + 1,
                          previous[j - 1] + (character != candidate))
-    return row[-1] / len(x)
+    return row[-1] / max(len(x), 1)
 
 
 def percentage_corr_kekpoints(x, y, scale, ptrhld=0.2):
     """ return PCK using the provided scale and threshold proportion """
-    distances = np.linalg.norm(np.asarray(x)[:, :2] - np.asarray(y)[:, :2], axis=1)
-    return float(np.mean(distances <= ptrhld * scale) * 100)
+    predicted = np.asarray(x, dtype=np.float64)
+    reference = np.asarray(y, dtype=np.float64)
+    if predicted.ndim != 2 or reference.ndim != 2 or predicted.shape[1] < 2 or reference.shape[1] < 2:
+        raise ValueError("PCK inputs must be [keypoints, coordinates] arrays.")
+    if predicted.shape[0] != reference.shape[0]:
+        raise ValueError("PCK inputs must contain the same number of keypoints.")
+    if not np.isfinite(scale) or scale <= 0:
+        raise ValueError("PCK scale must be a positive finite value.")
+    distances = np.linalg.norm(predicted[:, :2] - reference[:, :2], axis=1)
+    valid = np.isfinite(distances)
+    if reference.shape[1] >= 3:
+        valid &= reference[:, 2] > 0
+    if not np.any(valid):
+        return 100.0
+    return float(np.mean(distances[valid] <= ptrhld * scale) * 100)
