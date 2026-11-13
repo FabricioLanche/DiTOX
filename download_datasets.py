@@ -37,6 +37,19 @@ def load_huggingface():
     return load_dataset
 
 
+def _hf_image_bytes(image_value, image_id):
+    if isinstance(image_value, dict):
+        data = image_value.get("bytes")
+        if data is not None:
+            return data
+        path = image_value.get("path")
+        if path and Path(path).is_file():
+            return Path(path).read_bytes()
+    elif isinstance(image_value, (bytes, bytearray)):
+        return bytes(image_value)
+    raise ValueError(f"La imagen {image_id} no tiene bytes embebidos.")
+
+
 def download_coco(load_dataset, force=False):
     existing = list(COCO_DIR.glob("*.jpg")) if COCO_DIR.exists() else []
     if len(existing) >= COCO_EXPECTED_IMAGES and not force:
@@ -45,24 +58,49 @@ def download_coco(load_dataset, force=False):
         )
         return
 
-    print("[COCO] Descargando rafaelpadilla/coco2017 (split=val)...")
-    COCO_DIR.mkdir(parents=True, exist_ok=True)
-    dataset = load_dataset("rafaelpadilla/coco2017", split="val")
+    from huggingface_hub import hf_hub_download
+    import pyarrow.parquet as pq
 
+    repo_id = "rafaelpadilla/coco2017"
+    shards, revision = _find_parquet_shards(repo_id, "val", "default")
+    if not shards:
+        raise RuntimeError(
+            "No se encontraron shards Parquet para "
+            f"{repo_id} (val). Descarga val2017.zip manualmente o usa datasets<4."
+        )
+
+    print(
+        f"[COCO] Descargando {len(shards)} shards Parquet "
+        f"de {repo_id} (split=val)..."
+    )
+    COCO_DIR.mkdir(parents=True, exist_ok=True)
     saved = skipped = 0
-    for row in dataset:
-        image_id = row.get("image_id", row.get("id"))
-        if image_id is None:
-            raise ValueError("El registro de COCO no contiene image_id/id.")
-        target = COCO_DIR / f"{int(image_id):012d}.jpg"
-        if target.exists() and not force:
-            skipped += 1
-            continue
-        image = row["image"]
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-        image.save(target, format="JPEG")
-        saved += 1
+    for shard in shards:
+        download_kwargs = {"repo_type": "dataset"}
+        if revision is not None:
+            download_kwargs["revision"] = revision
+        local_shard = hf_hub_download(repo_id, shard, **download_kwargs)
+        parquet = pq.ParquetFile(local_shard)
+        columns = set(parquet.schema_arrow.names)
+        if "image_id" not in columns or "image" not in columns:
+            raise ValueError(
+                f"El shard {shard} no contiene image_id/image: "
+                f"{sorted(columns)}"
+            )
+        for batch in parquet.iter_batches(
+            batch_size=32, columns=["image_id", "image"]
+        ):
+            for row in batch.to_pylist():
+                image_id = row.get("image_id")
+                if image_id is None:
+                    raise ValueError("El registro de COCO no contiene image_id.")
+                image_value = row.get("image")
+                target = COCO_DIR / f"{int(image_id):012d}.jpg"
+                if target.exists() and not force:
+                    skipped += 1
+                    continue
+                target.write_bytes(_hf_image_bytes(image_value, image_id))
+                saved += 1
 
     total = len(list(COCO_DIR.glob("*.jpg")))
     print(f"[COCO] Guardadas: {saved}, ya existentes: {skipped}, total: {total}.")
