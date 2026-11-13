@@ -13,10 +13,10 @@ if str(project_root) not in sys.path:
 from configs.config import load_pipeline_config
 from src.model_orchestrator.model_orchestrator import ModelOrchestrator
 from src.model_orchestrator.tvm_builder import TVMBuilder
-from src.dispatchers import BackendDispatcher, ModelComparisonDispatcher
-from src.reports.logger import configure_pipeline_logger
-from src.reports import ReportManager
-from src.reports.checkpoint_manager import CheckpointManager
+from src.helpers.dispatchers import BackendDispatcher, ModelComparisonDispatcher
+from src.helpers.reports.logger import configure_pipeline_logger
+from src.helpers.reports import ReportManager
+from src.helpers.reports.checkpoint_manager import CheckpointManager
 from src.runner.preprocessing.prepared_image_inputs import PreparedImageInputs
 from src.runner.preprocessing.text_inputs import DatasetInputProvider, TextInputProvider
 from src.runner.preprocessing.model_preprocessor import ModelPreprocessor
@@ -77,7 +77,7 @@ def _run_parallel_models(
     completed_models,
     checkpoint_manager,
 ):
-    from src.dispatchers.model_worker import run_model_task
+    from src.helpers.dispatchers.model_worker import run_model_task
 
     model_workers = min(model_workers, len(model_specs))
     reports = reports or [
@@ -102,16 +102,26 @@ def _run_parallel_models(
             [
                 batch_index
                 for batch_index, batch_state in enumerate(batch_states)
-                if not batch_state["problematic_models"]
-                or model_spec["model_name_opset"]
-                in batch_state["problematic_models"]
+                if (
+                    model_spec["model_name_opset"]
+                    not in batch_state["existing_models"]
+                    and (
+                        not batch_state["problematic_models"]
+                        or model_spec["model_name_opset"]
+                        in batch_state["problematic_models"]
+                    )
+                )
             ],
         )
         for model_spec in model_specs
         if any(
-            not batch_state["problematic_models"]
-            or model_spec["model_name_opset"]
-            in batch_state["problematic_models"]
+            model_spec["model_name_opset"]
+            not in batch_state["existing_models"]
+            and (
+                not batch_state["problematic_models"]
+                or model_spec["model_name_opset"]
+                in batch_state["problematic_models"]
+            )
             for batch_state in batch_states
         )
     )
@@ -152,6 +162,9 @@ def _run_parallel_models(
             )
         completed_models.add(model_spec["model_name_opset"])
         for batch_index, model_result in zip(batch_indexes, model_results):
+            ReportManager.clear_model_failures(
+                reports[batch_index], model_spec["model_name_opset"]
+            )
             ReportManager.merge_model_result(reports[batch_index], model_result)
             pipeline_trace.event(
                 "model.worker.completed",
@@ -211,6 +224,9 @@ def _run_parallel_models(
                             worker_result["conversion_errors"][model_name_opset] = {
                                 "worker": repr(error)
                             }
+                            ReportManager.clear_model_failures(
+                                reports[batch_index], model_name_opset
+                            )
                             worker_results[
                                 batch_states[batch_index]["report_path"]
                             ] = worker_result
@@ -612,6 +628,7 @@ def main():
                 "text_prompts": None,
                 "report_path": report_path,
                 "problematic_models": None,
+                "existing_models": set(),
                 "report_started": False,
                 "manifest_categories": manifest_categories,
                 "manifest_missing_models": manifest_missing_models,
@@ -628,14 +645,14 @@ def main():
         starts_from += images_chunk
         ends_at += images_chunk
 
+    model_ids = [
+        f"{model.model}-{int(model.opset)}"
+        for model in model_orchestrator.all_models
+    ]
     checkpoint_manager = None
     completed_models = set()
     checkpoint_settings = run_config.checkpoint
     if checkpoint_settings.get("enabled", True):
-        model_ids = [
-            f"{model.model}-{int(model.opset)}"
-            for model in model_orchestrator.all_models
-        ]
         with run_config.path.open("r", encoding="utf-8") as config_file:
             config_data = json.load(config_file)
         checkpoint_manager = CheckpointManager(
@@ -647,6 +664,7 @@ def main():
             checkpoint_settings,
         )
 
+    report_templates = {}
     if checkpoint_manager is not None and checkpoint_manager.resumed:
         completed_models = checkpoint_manager.completed_models
         stored_reports = checkpoint_manager.reports_for(
@@ -662,6 +680,10 @@ def main():
                     manifest_excluded_by_config,
                 ),
             )
+            report_templates[str(report_path)] = report
+            batch_state["existing_models"] = ReportManager.model_ids(
+                report, model_ids
+            )
             batch_state["problematic_models"] = (
                 checkpoint_manager.problematic_models_for(report_path)
             )
@@ -673,11 +695,27 @@ def main():
             checkpoint=str(checkpoint_manager.state_path),
         )
     else:
-        report_templates = {}
         problematic_models_by_report = {}
         for batch_state in batch_states:
             report_path = batch_state["report_path"]
+            report_template = report_manager.new_report(
+                manifest_categories,
+                manifest_missing_models,
+                manifest_excluded_by_config,
+            )
             if check_prob_models:
+                if report_path.is_file():
+                    existing_report = report_manager.load(report_path)
+                    if not ReportManager.is_compatible(
+                        existing_report, report_template
+                    ):
+                        raise ValueError(
+                            f"Existing report is incompatible with this model "
+                            f"selection: {report_path}. Use a different report "
+                            "directory instead of overwriting it."
+                        )
+                    report_template = existing_report
+                    batch_state["report_started"] = True
                 problematic_models = (
                     report_manager.problematic_models(report_path)
                     if report_path.is_file()
@@ -694,18 +732,36 @@ def main():
             else:
                 problematic_models_by_report[str(report_path)] = None
 
-            report_templates[str(report_path)] = report_manager.new_report(
-                manifest_categories,
-                manifest_missing_models,
-                manifest_excluded_by_config,
-            )
+            if not check_prob_models and report_path.is_file():
+                existing_report = report_manager.load(report_path)
+                if not ReportManager.is_compatible(
+                    existing_report, report_template
+                ):
+                    raise ValueError(
+                        f"Existing report is incompatible with this model "
+                        f"selection: {report_path}. Use a different report "
+                        "directory instead of overwriting it."
+                    )
+                report_template = existing_report
+                batch_state["existing_models"] = ReportManager.model_ids(
+                    existing_report, model_ids
+                )
+                batch_state["report_started"] = True
+
+            report_templates[str(report_path)] = report_template
             if checkpoint_manager is not None:
                 batch_state["report_started"] = True
+
+        if batch_states and not check_prob_models:
+            completed_models = set.intersection(
+                *(batch_state["existing_models"] for batch_state in batch_states)
+            )
 
         if checkpoint_manager is not None:
             checkpoint_manager.initialize(
                 report_templates,
                 problematic_models_by_report,
+                completed_model_ids=completed_models,
             )
             for batch_state in batch_states:
                 report_manager.save(
@@ -727,7 +783,7 @@ def main():
             [state["report_path"] for state in batch_states]
         )
         if checkpoint_manager is not None
-        else None
+        else report_templates
     )
 
     if batch_states and parallel_models:
@@ -766,7 +822,10 @@ def main():
                 for state in batch_states
             ]
             if checkpoint_manager is not None
-            else None,
+            else [
+                report_templates[str(state["report_path"])]
+                for state in batch_states
+            ],
             completed_models=completed_models,
             checkpoint_manager=checkpoint_manager,
         )
@@ -784,19 +843,26 @@ def main():
             eligible_batches = [
                 batch_state
                 for batch_state in batch_states
-                if not check_prob_models
-                or model_data["model_name_opset"]
-                in batch_state["problematic_models"]
+                if (
+                    not check_prob_models
+                    or model_data["model_name_opset"]
+                    in batch_state["problematic_models"]
+                )
+                and model_data["model_name_opset"]
+                not in batch_state["existing_models"]
             ]
             if not eligible_batches:
                 continue
 
             model_results = {}
             for batch_state in eligible_batches:
+                current_report = report_manager.load(batch_state["report_path"])
+                ReportManager.clear_model_failures(
+                    current_report, model_data["model_name_opset"]
+                )
+                report_manager.save(batch_state["report_path"], current_report)
                 before_report = (
-                    report_manager.load(batch_state["report_path"])
-                    if checkpoint_manager is not None
-                    else None
+                    current_report if checkpoint_manager is not None else None
                 )
                 pipeline_trace.event(
                     "model.selected",
