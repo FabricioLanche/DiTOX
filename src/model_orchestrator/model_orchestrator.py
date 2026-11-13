@@ -11,6 +11,27 @@ import onnx
 from onnx import hub
 
 
+def load_onnx_hub_model(model_name, opset):
+    """Retry a model load once with a fresh download after a cache checksum error."""
+    try:
+        return hub.load(model_name, opset=opset)
+    except AssertionError as error:
+        message = str(error)
+        if not (
+            "has SHA256 " in message
+            and "while checksum should be " in message
+            and "Use force_reload to download the model from the model hub."
+            in message
+        ):
+            raise
+
+        print(
+            f"Cached checksum mismatch for {model_name}-{opset}; "
+            "retrying with a forced download."
+        )
+        return hub.load(model_name, opset=opset, force_reload=True)
+
+
 class ModelOrchestrator:
     """Discovers, filters, loads, and describes models for a run."""
 
@@ -431,7 +452,7 @@ class ModelOrchestrator:
                         model_name, model_opset
                     )
                 else:
-                    model = hub.load(model_name, opset=model_opset)
+                    model = load_onnx_hub_model(model_name, model_opset)
 
             hash_stage = (
                 self.pipeline_trace.stage(
@@ -547,7 +568,7 @@ def load_text_model(script_dir, hub_config, model_name, model_opset):
             return onnx.load(str(model_path)), str(model_path)
     except Exception as error:
         print(f"Could not load text model artifacts for {model_name}: {error}")
-    model = hub.load(model_name, opset=model_opset)
+    model = load_onnx_hub_model(model_name, model_opset)
     fallback = (
         Path(script_dir)
         / hub_config["cache_folder_rel_path"]
