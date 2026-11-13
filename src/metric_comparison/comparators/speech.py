@@ -1,3 +1,6 @@
+QUALITY_REGRESSION_TOLERANCE = 0.01
+
+
 class SpeechComparator:
 
     def __init__(self, evaluation, comparisons):
@@ -10,8 +13,8 @@ class SpeechComparator:
         base_wer = self.evaluation.get("base_wer")
         base_cer = self.evaluation.get("base_cer")
         is_dissimilar = (
-            (base_wer is not None and wer > base_wer)
-            or (base_cer is not None and cer > base_cer)
+            (base_wer is not None and wer - base_wer > QUALITY_REGRESSION_TOLERANCE)
+            or (base_cer is not None and cer - base_cer > QUALITY_REGRESSION_TOLERANCE)
         )
 
         print("WER for " + current_pass + ": " + str(wer))

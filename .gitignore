@@ -4,7 +4,9 @@ tvm_docs.pdf
 models_cache/
 */logs
 configs/dataset/**/*.jpg
-results/
+results/checkpoints
+results/ditox-*
+tmp*
 __pycache__
 configs/dataset/SQuAD_v2/*.parquet
 configs/dataset/IMDB/*.parquet
