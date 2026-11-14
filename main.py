@@ -519,6 +519,12 @@ def main():
     report_manager = ReportManager(
         script_dir, general_config["report_file_base_rel_path"]
     )
+    problematic_report_manager = None
+    if general_config.get("problematic_models_report_file_base_rel_path"):
+        problematic_report_manager = ReportManager(
+            script_dir,
+            general_config["problematic_models_report_file_base_rel_path"],
+        )
 
     tvm_builder = None
     if run_config.backend == "tvmr":
@@ -617,6 +623,11 @@ def main():
             task_samples = None
             images_paths = all_images_paths[starts_from:ends_at]
         report_path = report_manager.chunk_path(starts_from, ends_at)
+        problematic_report_path = (
+            problematic_report_manager.chunk_path(starts_from, ends_at)
+            if problematic_report_manager is not None
+            else report_path
+        )
         print(" ---- Input Batch: " + str(starts_from) + " to " + str(ends_at))
 
         batch_states.append(
@@ -627,6 +638,7 @@ def main():
                 "ends_at": ends_at,
                 "text_prompts": None,
                 "report_path": report_path,
+                "problematic_report_path": problematic_report_path,
                 "problematic_models": None,
                 "existing_models": set(),
                 "report_started": False,
@@ -704,6 +716,7 @@ def main():
                 manifest_excluded_by_config,
             )
             if check_prob_models:
+                problematic_report_path = batch_state["problematic_report_path"]
                 if report_path.is_file():
                     existing_report = report_manager.load(report_path)
                     if not ReportManager.is_compatible(
@@ -717,14 +730,14 @@ def main():
                     report_template = existing_report
                     batch_state["report_started"] = True
                 problematic_models = (
-                    report_manager.problematic_models(report_path)
-                    if report_path.is_file()
+                    ReportManager.problematic_models(problematic_report_path)
+                    if problematic_report_path.is_file()
                     else set()
                 )
                 batch_state["problematic_models"] = problematic_models
                 print(
                     f"Isolating passes for {len(problematic_models)} problematic models "
-                    f"from {report_path.name}"
+                    f"from {problematic_report_path.name}"
                 )
                 problematic_models_by_report[str(report_path)] = sorted(
                     problematic_models

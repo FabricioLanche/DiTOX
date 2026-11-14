@@ -1,0 +1,55 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 2,
+  "model_instances_run": 0,
+  "failed_conversions_no": 2,
+  "skipped_models": [],
+  "failed_models": [
+    "MediaPipe-Pose-13",
+    "MoveNet-Lightning-16",
+    "YOLOv8n-Pose-17"
+  ],
+  "conversion_errors": {
+    "MediaPipe-Pose-13": {
+      "baseline": "AssertionError('Only one of scales and sizes can be provided in Resize.')"
+    },
+    "MoveNet-Lightning-16": {
+      "baseline": "ValueError('Transpose: number of axes in perm attribute (3) must equal the number of input tensor dimensions (-1)')"
+    },
+    "RTMPose-S-11": {
+      "all": "InternalError('Check failed: (tensor) is false: Expected TensorType, but got T.int64')"
+    },
+    "YOLOv8n-Pose-17": {
+      "baseline": "InternalError('CodeGenVM cannot emit this Relax operator directly. Run the appropriate lowering pass, or route the operator to an external codegen before VM codegen.\\nOffending call:\\nR.subtract(metadata[\"ir.GenericConst\"][0], lv436)\\n# Metadata omitted. Use show_meta=True in script() method to show it.')"
+    },
+    "RTMPose-M-11": {
+      "all": "InternalError('Check failed: (tensor) is false: Expected TensorType, but got T.int64')"
+    }
+  },
+  "manifest_models_expected": 0,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [],
+  "manifest_models_selected_by_config": 0,
+  "RTMPose-S-11": {
+    "skipped": [],
+    "failed": [
+      "all"
+    ],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 0
+  },
+  "RTMPose-M-11": {
+    "skipped": [],
+    "failed": [
+      "all"
+    ],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 0
+  }
+}

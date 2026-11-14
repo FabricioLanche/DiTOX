@@ -1,0 +1,104 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 5,
+  "model_instances_run": 3,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [],
+  "conversion_errors": {},
+  "manifest_models_expected": 0,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [],
+  "manifest_models_selected_by_config": 0,
+  "MediaPipe-Pose-13": {
+    "skipped": [
+      "all"
+    ],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 0
+  },
+  "MoveNet-Lightning-16": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    }
+  },
+  "RTMPose-S-11": {
+    "skipped": [
+      "all"
+    ],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 0
+  },
+  "RTMPose-M-11": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    }
+  },
+  "YOLOv8n-Pose-17": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    }
+  }
+}

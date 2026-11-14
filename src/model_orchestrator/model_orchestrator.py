@@ -307,7 +307,9 @@ class ModelOrchestrator:
                     inputs.append({
                         "name": graph_input.name,
                         "shape": shape,
-                        "dtype": onnx.TensorProto.DataType.Name(tensor_type.elem_type).lower(),
+                        "dtype": onnx.helper.tensor_dtype_to_np_dtype(
+                            tensor_type.elem_type
+                        ).name,
                     })
                 metadata = {"io_ports": {"inputs": inputs}}
                 discovered.append(SimpleNamespace(
@@ -431,7 +433,9 @@ class ModelOrchestrator:
                     "tags": list(tags),
                     "model_config": model_config,
                     "model_path": model_path,
-                    "shape_dict": {first_input["name"]: model_shape},
+                    "shape_dict": self.prepare_tvm_shape_dict(
+                        first_input, model_shape
+                    ),
                     "external": getattr(model_obj, "is_external", False),
                     "external_spec": getattr(model_obj, "external_spec", None),
                     "external_model_dir": getattr(model_obj, "external_model_dir", None),
@@ -483,7 +487,9 @@ class ModelOrchestrator:
                                 model,
                                 source_key=source_key,
                                 model_hash=original_hash,
-                                shape_dict={first_input["name"]: model_shape},
+                                shape_dict=self.prepare_tvm_shape_dict(
+                                    first_input, model_shape
+                                ),
                             )
                         )
                 except Exception as error:
@@ -529,6 +535,22 @@ class ModelOrchestrator:
         for segment in ("/model/", "/models/", "/preproc/"):
             model_path = model_path.replace(segment, f"{segment}{model_sha}_")
         return str(self.script_dir / cache_folder_rel_path / model_path.lstrip("/"))
+
+    @staticmethod
+    def prepare_tvm_shape_dict(first_input, model_shape):
+        """Return a shape dict with concrete dims, as TVM requires.
+
+        ONNX may declare symbolic dimensions (for example ``"N"`` or
+        ``"batch_size"``). Passing those strings through to ``from_onnx``
+        makes TVM build ``ShapeExpr`` nodes from strings and crash, so
+        symbolic dimensions are mapped to a concrete batch size of 1.
+        """
+        return {
+            first_input["name"]: [
+                dimension if isinstance(dimension, int) else 1
+                for dimension in model_shape
+            ]
+        }
 
     @staticmethod
     def prepare_model_shape(model_obj):

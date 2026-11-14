@@ -1,0 +1,19 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 0,
+  "model_instances_run": 0,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [
+    "NeMo-Citrinet-512-16"
+  ],
+  "conversion_errors": {
+    "NeMo-Citrinet-512-16": {
+      "baseline": "ValueError(\"invalid literal for int() with base 10: '<unk>'\")"
+    }
+  },
+  "manifest_models_expected": 0,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [],
+  "manifest_models_selected_by_config": 0
+}
