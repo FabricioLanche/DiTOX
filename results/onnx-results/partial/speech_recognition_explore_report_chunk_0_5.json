@@ -1,0 +1,94 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 3,
+  "model_instances_run": 3,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [
+    "NeMo-Citrinet-512-16"
+  ],
+  "conversion_errors": {
+    "NeMo-Citrinet-512-16": {
+      "baseline": "ValueError(\"invalid literal for int() with base 10: '<unk>'\")"
+    }
+  },
+  "manifest_models_expected": 0,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [],
+  "manifest_models_selected_by_config": 0,
+  "Wav2Vec2-Base-960h-14": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    }
+  },
+  "Whisper-Base-Encoder-14": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    }
+  },
+  "Whisper-Tiny-Encoder-14": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    }
+  }
+}

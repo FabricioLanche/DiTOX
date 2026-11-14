@@ -139,13 +139,18 @@ class ModelPreprocessor:
         shape = list(input_shape)
         if len(shape) != 4:
             raise ValueError(f"Expected a rank-4 pose input, got {shape}.")
-        nhwc = shape[-1] == 3
+        nhwc = shape[-1] in (1, 3, 4) and shape[1] not in (1, 3, 4)
         height, width = (shape[1], shape[2]) if nhwc else (shape[2], shape[3])
         if not isinstance(height, int) or not isinstance(width, int):
             raise ValueError(f"Dynamic pose input dimensions need an explicit shape: {shape}.")
+        channels = shape[-1] if nhwc else shape[1]
+        if channels not in (1, 3, 4):
+            raise ValueError(
+                f"Unsupported pose input channels {channels} in shape {shape}."
+            )
         if isinstance(image, (str, bytes)):
             image = Image.open(image)
-        image = image.convert("RGB")
+        image = image.convert({1: "L", 3: "RGB", 4: "RGBA"}[channels])
         original_width, original_height = image.size
         crop = (0.0, 0.0, float(original_width), float(original_height))
         if bbox is not None and len(bbox) >= 4:

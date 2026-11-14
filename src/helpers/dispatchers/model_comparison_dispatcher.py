@@ -39,8 +39,11 @@ class ModelComparisonDispatcher:
             paired_ids = [key for key in base_model_out if key in opt_model_out]
             if not paired_ids:
                 raise ValueError("Speech outputs have no matching sample IDs.")
-            base_wer_values, base_cer_values = [], []
-            opt_wer_values, opt_cer_values = [], []
+            different_samples = 0
+            different_words = 0
+            total_words = 0
+            substitutions = insertions = deletions = 0
+            cer_values = []
             for sample_id in paired_ids:
                 base_text = base_model_out[sample_id]
                 opt_text = opt_model_out[sample_id]
@@ -49,15 +52,39 @@ class ModelComparisonDispatcher:
                 reference = base_text.get("reference")
                 if not isinstance(reference, str) or reference != opt_text.get("reference"):
                     raise ValueError(f"Speech reference is missing or inconsistent for {sample_id}.")
-                base_wer_values.append(word_err_rate(reference, base_text["prediction"]))
-                base_cer_values.append(character_err_rate(reference, base_text["prediction"]))
-                opt_wer_values.append(word_err_rate(reference, opt_text["prediction"]))
-                opt_cer_values.append(character_err_rate(reference, opt_text["prediction"]))
+                base_prediction = base_text["prediction"]
+                optimized_prediction = opt_text["prediction"]
+                cer_values.append(character_err_rate(base_prediction, optimized_prediction))
+                different_samples += int(base_prediction != optimized_prediction)
+                different_words += word_err_rate(base_prediction, optimized_prediction) * max(
+                    len(base_prediction.split()), 1
+                )
+                total_words += len(base_prediction.split())
+                left, right = base_prediction.split(), optimized_prediction.split()
+                costs = [[(0, 0, 0, 0) for _ in range(len(right) + 1)] for _ in range(len(left) + 1)]
+                for i in range(1, len(left) + 1): costs[i][0] = (i, 0, 0, i)
+                for j in range(1, len(right) + 1): costs[0][j] = (j, 0, j, 0)
+                for i in range(1, len(left) + 1):
+                    for j in range(1, len(right) + 1):
+                        if left[i-1] == right[j-1]: costs[i][j] = costs[i-1][j-1]
+                        else:
+                            candidates = [
+                                (costs[i-1][j-1][0]+1, costs[i-1][j-1][1]+1, costs[i-1][j-1][2], costs[i-1][j-1][3]),
+                                (costs[i][j-1][0]+1, costs[i][j-1][1], costs[i][j-1][2]+1, costs[i][j-1][3]),
+                                (costs[i-1][j][0]+1, costs[i-1][j][1], costs[i-1][j][2], costs[i-1][j][3]+1),
+                            ]
+                            costs[i][j] = min(candidates, key=lambda item: item[0])
+                _, sub, ins, dele = costs[-1][-1]
+                substitutions += sub; insertions += ins; deletions += dele
             evaluation = {
-                "base_wer": float(np.mean(base_wer_values)),
-                "base_cer": float(np.mean(base_cer_values)),
-                "wer": float(np.mean(opt_wer_values)),
-                "cer": float(np.mean(opt_cer_values)),
+                "different_samples": different_samples,
+                "different_words": int(round(different_words)),
+                "total_words": total_words,
+                "total_samples": len(paired_ids),
+                "change_rate": 100.0 * different_samples / len(paired_ids),
+                "wer": float(different_words / total_words) if total_words else 0.0,
+                "cer": float(np.mean(cer_values)) if cer_values else 0.0,
+                "substitutions": substitutions, "insertions": insertions, "deletions": deletions,
             }
             SpeechComparator(evaluation, model_comparisons).update(
                 model_name_opset, current_pass
@@ -67,7 +94,11 @@ class ModelComparisonDispatcher:
             paired_ids = [key for key in base_model_out if key in opt_model_out]
             if not paired_ids:
                 raise ValueError("Pose outputs have no matching sample IDs.")
-            pck_values = []
+            different_samples = 0
+            different_keypoints = 0
+            total_keypoints = 0
+            oks_values = []; pck_values = []; displacements = []
+            coco_sigmas = np.array([.26,.25,.25,.35,.35,.79,.79,.72,.72,.62,.62,1.07,1.07,.87,.87,.89,.89]) / 10
             for sample_id in paired_ids:
                 base_pose = base_model_out[sample_id]
                 opt_pose = opt_model_out[sample_id]
@@ -79,18 +110,36 @@ class ModelComparisonDispatcher:
                 reference = np.asarray(base_pose["reference_keypoints"])
                 if not np.array_equal(reference, np.asarray(opt_pose["reference_keypoints"])):
                     raise ValueError(f"Pose reference differs for sample {sample_id}.")
-                base_pck = percentage_corr_kekpoints(
-                    reference, base_pose["keypoints"], scale
+                base_keypoints = np.asarray(base_pose["keypoints"], dtype=np.float64)
+                opt_keypoints = np.asarray(opt_pose["keypoints"], dtype=np.float64)
+                if base_keypoints.shape != opt_keypoints.shape:
+                    raise ValueError(
+                        f"Pose keypoint shapes differ for sample {sample_id}: "
+                        f"{base_keypoints.shape} vs {opt_keypoints.shape}."
+                    )
+                point_equal = np.isclose(
+                    base_keypoints, opt_keypoints, rtol=1e-5, atol=1e-5,
+                    equal_nan=True,
                 )
-                opt_pck = percentage_corr_kekpoints(
-                    reference, opt_pose["keypoints"], scale
-                )
-                pck_values.append(
-                    {"base": base_pck, "optimized": opt_pck}
-                )
+                changed_points = ~np.all(point_equal, axis=1)
+                different_samples += int(np.any(changed_points))
+                different_keypoints += int(np.count_nonzero(changed_points))
+                total_keypoints += int(base_keypoints.shape[0])
+                valid = np.isfinite(base_keypoints[:,:2]).all(axis=1) & np.isfinite(opt_keypoints[:,:2]).all(axis=1)
+                d = np.linalg.norm(base_keypoints[:,:2]-opt_keypoints[:,:2],axis=1)
+                scale=max(scale,1e-6); sigmas=coco_sigmas[:len(d)]
+                oks_values.append(float(np.mean(np.exp(-(d[valid]**2)/(2*(scale*sigmas[valid])**2)))) if np.any(valid) else 1.0)
+                pck_values.extend((d[valid] <= .2*scale).tolist())
+                displacements.extend((d[valid]/scale).tolist())
             BodyComparator({
-                "base_pck": float(np.mean([value["base"] for value in pck_values])),
-                "pck": float(np.mean([value["optimized"] for value in pck_values])),
+                "different_samples": different_samples,
+                "different_keypoints": different_keypoints,
+                "total_keypoints": total_keypoints,
+                "total_samples": len(paired_ids),
+                "change_rate": 100.0*different_samples/len(paired_ids),
+                "oks": float(np.mean(oks_values)),
+                "pck": 100.0*float(np.mean(pck_values)) if pck_values else 100.0,
+                "mean_normalized_displacement": float(np.mean(displacements)) if displacements else 0.0,
             }, model_comparisons).update(
                 model_name_opset, current_pass
             )
@@ -105,6 +154,12 @@ class ModelComparisonDispatcher:
             print(evaluation)
             comparator = ClassificationComparator(evaluation, model_comparisons)
             comparator.update(model_name_opset, current_pass, include_certainties=include_certainties)
+            total = len(base_model_out)
+            changed = len(evaluation.get("dissimilar", []))
+            model_comparisons[model_name_opset][current_pass]["output_change"] = {
+                "changed_samples": changed, "total_samples": total,
+                "change_rate": 100.0 * changed / total if total else 0.0,
+            }
 
         elif ("object detection segmentation" in tags and "RetinaNet" not in model_name_opset):
             model_comparisons[model_name_opset][current_pass] = {}
@@ -240,6 +295,35 @@ class ModelComparisonDispatcher:
 
                 comparator = SSDComparator(evaluation, model_comparisons)
                 comparator.update(model_name_opset, current_pass, include_certainties=include_certainties, array_index=1)
+
+            # Keep tensor-ranking differences separate from decoded box metrics.
+            raw_family_metrics = model_comparisons[model_name_opset][current_pass]
+            tensor_rank = {}
+            boxes = {}
+            for output_name, metrics in raw_family_metrics.items():
+                if not isinstance(metrics, dict):
+                    continue
+                if any(key in metrics for key in ("first", "top5", "topK")):
+                    tensor_rank[output_name] = metrics
+                elif any(key.startswith("metrics_") for key in metrics):
+                    boxes[output_name] = metrics
+            dissimilar = evaluation.get("dissimilar", [])
+            changed_ids = set()
+            for values in dissimilar:
+                if isinstance(values, (list, tuple, set)):
+                    changed_ids.update(values)
+            total = len(base_model_out)
+            model_comparisons[model_name_opset][current_pass] = {
+                "output_change": {
+                    "changed_samples": len(changed_ids),
+                    "total_samples": total,
+                    "change_rate": 100.0 * len(changed_ids) / total if total else 0.0,
+                },
+                "family_metrics": {"detection": {
+                    "tensor_rank": tensor_rank,
+                    "boxes": boxes,
+                }},
+            }
         else:
             evaluation = onnx_runner.evaluate(base_model_out, opt_model_out, type=tags, include_certainties=include_certainties)
             output =[node.name for node in model.graph.output]

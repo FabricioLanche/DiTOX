@@ -1,0 +1,31 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 0,
+  "model_instances_run": 0,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [
+    "Whisper-Base-Encoder-14",
+    "Wav2Vec2-Base-960h-14",
+    "NeMo-Citrinet-512-16",
+    "Whisper-Tiny-Encoder-14"
+  ],
+  "conversion_errors": {
+    "Whisper-Base-Encoder-14": {
+      "baseline": "RuntimeError('Whisper encoder-decoder models currently require the ORT backend; the TVM path in this project compiles a single ONNX graph.')"
+    },
+    "Wav2Vec2-Base-960h-14": {
+      "baseline": "ValueError('In ir.Op(span=None, ty=ir.Type(span=None), name=\"relax.add\", description=\"\", arguments=(ir.ArgumentInfo(name=\"x1\", type_info=\"Tensor\", description=\"The first input tensor.\"), ir.ArgumentInfo(name=\"x2\", type_info=\"Tensor\", description=\"The second input tensor.\")), attrs_type_key=\"\", num_inputs=2, support_level=10), the first input shape at dim 1 is T.int64(-1) and the second input shape at dim 1 is T.int64(0), which are not broadcastable.')"
+    },
+    "NeMo-Citrinet-512-16": {
+      "baseline": "RuntimeError('Check failed: input_shape[i] == reg (352 vs. 1) : ErrorContext(fn=main, loc=param[0], param=audio_signal, annotation=R.Tensor((1, 80, 1), dtype=\"float32\"))  match_cast error,  shape[2] mismatch to specified constant.')"
+    },
+    "Whisper-Tiny-Encoder-14": {
+      "baseline": "RuntimeError('Whisper encoder-decoder models currently require the ORT backend; the TVM path in this project compiles a single ONNX graph.')"
+    }
+  },
+  "manifest_models_expected": 0,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [],
+  "manifest_models_selected_by_config": 0
+}

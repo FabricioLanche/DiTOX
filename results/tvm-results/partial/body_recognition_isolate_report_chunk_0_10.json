@@ -1,0 +1,703 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 2,
+  "model_instances_run": 46,
+  "failed_conversions_no": 4,
+  "skipped_models": [],
+  "failed_models": [
+    "MoveNet-Lightning-16",
+    "MediaPipe-Pose-13",
+    "YOLOv8n-Pose-17"
+  ],
+  "conversion_errors": {
+    "MoveNet-Lightning-16": {
+      "baseline": "ValueError('Transpose: number of axes in perm attribute (3) must equal the number of input tensor dimensions (-1)')"
+    },
+    "MediaPipe-Pose-13": {
+      "baseline": "AssertionError('Only one of scales and sizes can be provided in Resize.')"
+    },
+    "RTMPose-S-11": {
+      "ToMixedPrecision": "InternalError('Check failed: (tensor) is false: Expected TensorType, but got T.int64')",
+      "DataflowUseInplaceCalls": "ValueError('In-place index 0 is out of range (must be between -1 and 0, inclusive, but is 1)')"
+    },
+    "YOLOv8n-Pose-17": {
+      "baseline": "InternalError('CodeGenVM cannot emit this Relax operator directly. Run the appropriate lowering pass, or route the operator to an external codegen before VM codegen.\\nOffending call:\\nR.subtract(metadata[\"ir.GenericConst\"][0], lv436)\\n# Metadata omitted. Use show_meta=True in script() method to show it.')"
+    },
+    "RTMPose-M-11": {
+      "ToMixedPrecision": "InternalError('Check failed: (tensor) is false: Expected TensorType, but got T.int64')",
+      "DataflowUseInplaceCalls": "ValueError('In-place index 0 is out of range (must be between -1 and 0, inclusive, but is 1)')"
+    }
+  },
+  "manifest_models_expected": 0,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [],
+  "manifest_models_selected_by_config": 0,
+  "RTMPose-S-11": {
+    "skipped": [],
+    "failed": [
+      "ToMixedPrecision",
+      "DataflowUseInplaceCalls"
+    ],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 23,
+    "AdjustMatmulOrder": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "CanonicalizeBindings": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FoldBatchnormToConv2D": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FastMathTransform": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "EliminateCommonSubexpr": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FuseTransposeMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "InlinePrivateFunctions": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "CombineParallelMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "ReorderTakeAfterMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RemoveRedundantReshape": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FoldConstant": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FuseOps": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FuseTIR": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RewriteDataflowReshape": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "TopologicalSort": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RemoveUnusedOutputs": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RemoveUnusedParameters": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "DeadCodeElimination": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "LazyTransformParams": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "StaticPlanBlockMemory": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "KillAfterLastUse": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    }
+  },
+  "RTMPose-M-11": {
+    "skipped": [],
+    "failed": [
+      "ToMixedPrecision",
+      "DataflowUseInplaceCalls"
+    ],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 23,
+    "AdjustMatmulOrder": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "CanonicalizeBindings": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FoldBatchnormToConv2D": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FastMathTransform": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "EliminateCommonSubexpr": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FuseTransposeMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "InlinePrivateFunctions": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "CombineParallelMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "ReorderTakeAfterMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RemoveRedundantReshape": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FoldConstant": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FuseOps": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "FuseTIR": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "SpecializePrimFuncBasedOnCallSite": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RewriteDataflowReshape": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "TopologicalSort": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RemoveUnusedOutputs": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "RemoveUnusedParameters": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "DeadCodeElimination": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "LazyTransformParams": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "StaticPlanBlockMemory": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    },
+    "KillAfterLastUse": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 10,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "keypoint_agreement": {
+          "oks": 1.0,
+          "pck": 100.0,
+          "mean_normalized_displacement": 0.0
+        }
+      }
+    }
+  }
+}

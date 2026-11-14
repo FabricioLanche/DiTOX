@@ -19,9 +19,11 @@ class ClassificationComparator:
         print("Dissimilarity for " + current_pass + " (top-K): " + str(dissimilar_percentage))
 
         self.comparisons[model_name][current_pass] = {
+            "family_metrics": {"classification": {
             "first": str(dissimilar_percentage1),
             "top5": str(dissimilar_percentage5),
             "topK": str(dissimilar_percentage)
+            }}
         }
 
         if include_certainties:
@@ -50,7 +52,7 @@ class ClassificationComparator:
                 variance = sum(squared_diffs) / Decimal(len(certainty_diff))
                 stddev = variance.sqrt()
 
-            self.comparisons[model_name][current_pass]["certainties"] = {
+            self.comparisons[model_name][current_pass]["family_metrics"]["classification"]["certainties"] = {
                 "mean_top1": str(mean_cert1),
                 "mean_top5": str(mean_cert5),
                 "mean_topK": str(mean_cert),

@@ -93,15 +93,20 @@ class TextRunner:
 
     def evaluate(self, base_outputs, optimized_outputs):
         scores = []
+        changed_samples = 0
         for index, base_text in base_outputs.items():
             optimized_text = optimized_outputs.get(index, "")
             prediction = base_text.split()
             reference = optimized_text.split()
             scores.append(self._sentence_bleu(prediction, reference))
+            changed_samples += int(base_text != optimized_text)
         if not scores:
-            return {"mean_bleu": 0.0, "median_bleu": 0.0, "scores": []}
+            return {"mean_bleu": 0.0, "median_bleu": 0.0, "scores": [], "changed_samples": 0, "total_samples": 0, "change_rate": 0.0}
         return {
             "mean_bleu": float(np.mean(scores)),
             "median_bleu": float(np.median(scores)),
             "scores": [float(score) for score in scores],
+            "changed_samples": changed_samples,
+            "total_samples": len(scores),
+            "change_rate": 100.0 * changed_samples / len(scores),
         }
