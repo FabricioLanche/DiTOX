@@ -221,6 +221,7 @@ def _run_parallel_models(
                         for batch_index in batch_indexes:
                             worker_result = report_manager.new_report()
                             worker_result["failed_models"].append(model_name_opset)
+                            worker_result["failed_conversions_no"] += 1
                             worker_result["conversion_errors"][model_name_opset] = {
                                 "worker": repr(error)
                             }
@@ -233,6 +234,7 @@ def _run_parallel_models(
                             reports[batch_index]["failed_models"].append(
                                 model_name_opset
                             )
+                            reports[batch_index]["failed_conversions_no"] += 1
                             reports[batch_index]["conversion_errors"][
                                 model_name_opset
                             ] = {"worker": repr(error)}
@@ -407,6 +409,7 @@ def _process_model_batch(
         print(error)
         print(model_name + " - a base model error occured!")
         model_comparisons["failed_models"].append(model_name_opset)
+        model_comparisons["failed_conversions_no"] += 1
         model_comparisons["conversion_errors"][model_name_opset] = {
             "baseline": repr(error)
         }

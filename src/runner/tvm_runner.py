@@ -101,8 +101,10 @@ class TVMRunner:
         images_length = len(images_paths)
         step = (images_length // 4) if images_length > 10 else images_length
 
-        input_name = config.get(
-            "input_name", self.input_names[0] if self.input_names else "data"
+        input_name = (
+            self.input_names[0]
+            if self.input_names
+            else config.get("input_name", "data")
         )
 
         for img_path in images_paths:
