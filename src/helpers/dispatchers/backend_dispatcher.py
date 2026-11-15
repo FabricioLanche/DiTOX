@@ -514,6 +514,31 @@ class BackendDispatcher:
         raise ValueError(f"No pose output adapter matches {model_name}.")
 
     @staticmethod
+    def _load_citrinet_vocabulary(token_file):
+        vocabulary = {}
+        with token_file.open("r", encoding="utf-8") as stream:
+            for line_number, line in enumerate(stream, start=1):
+                line = line.rstrip("\r\n")
+                if not line.strip():
+                    continue
+                parts = line.rsplit(maxsplit=1)
+                if len(parts) != 2:
+                    raise ValueError(
+                        f"Malformed token entry at {token_file}:{line_number}: {line!r}"
+                    )
+                first, second = parts
+                if second.lstrip("+-").isdigit():
+                    token, token_id = first, second
+                elif first.lstrip("+-").isdigit():
+                    token_id, token = first, second
+                else:
+                    raise ValueError(
+                        f"Malformed token entry at {token_file}:{line_number}: {line!r}"
+                    )
+                vocabulary[int(token_id)] = token
+        return vocabulary
+
+    @staticmethod
     def _decode_transcription(outputs, model_name, model_dir):
         lower_name = model_name.lower()
         if "whisper" in lower_name:
@@ -527,12 +552,7 @@ class BackendDispatcher:
             token_file = Path(model_dir) / "tokens.txt"
             if not token_file.is_file():
                 raise FileNotFoundError(token_file)
-            vocabulary = {}
-            with token_file.open("r", encoding="utf-8") as stream:
-                for line in stream:
-                    parts = line.strip().split(maxsplit=1)
-                    if len(parts) == 2:
-                        vocabulary[int(parts[0])] = parts[1]
+            vocabulary = BackendDispatcher._load_citrinet_vocabulary(token_file)
             vocabulary_size = max(vocabulary, default=-1) + 1
             if logits.ndim == 3 and logits.shape[1] == vocabulary_size:
                 token_ids = np.argmax(logits, axis=1).reshape(-1).tolist()
