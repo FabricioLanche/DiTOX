@@ -389,6 +389,7 @@ class ModelOrchestrator:
                 keyword in model_name_lower
                 for keyword in self.PREPROCESSING_KEYWORDS
             )
+            preserve_dynamic_shape = "citrinet" in model_name_lower
             model_config = {
                 "model_name": model_name + "_torch" if not has_known_preprocessor else "",
                 "input_name": first_input["name"],
@@ -434,7 +435,9 @@ class ModelOrchestrator:
                     "model_config": model_config,
                     "model_path": model_path,
                     "shape_dict": self.prepare_tvm_shape_dict(
-                        first_input, model_shape
+                        first_input,
+                        model_shape,
+                        preserve_dynamic=preserve_dynamic_shape,
                     ),
                     "external": getattr(model_obj, "is_external", False),
                     "external_spec": getattr(model_obj, "external_spec", None),
@@ -488,7 +491,9 @@ class ModelOrchestrator:
                                 source_key=source_key,
                                 model_hash=original_hash,
                                 shape_dict=self.prepare_tvm_shape_dict(
-                                    first_input, model_shape
+                                    first_input,
+                                    model_shape,
+                                    preserve_dynamic=preserve_dynamic_shape,
                                 ),
                             )
                         )
@@ -537,20 +542,27 @@ class ModelOrchestrator:
         return str(self.script_dir / cache_folder_rel_path / model_path.lstrip("/"))
 
     @staticmethod
-    def prepare_tvm_shape_dict(first_input, model_shape):
-        """Return a shape dict with concrete dims, as TVM requires.
+    def prepare_tvm_shape_dict(
+        first_input, model_shape, *, preserve_dynamic=False
+    ):
+        """Return a shape dict with a concrete batch and optional dynamic dims.
 
         ONNX may declare symbolic dimensions (for example ``"N"`` or
-        ``"batch_size"``). Passing those strings through to ``from_onnx``
-        makes TVM build ``ShapeExpr`` nodes from strings and crash, so
-        symbolic dimensions are mapped to a concrete batch size of 1.
+        ``"batch_size"``). Passing those strings directly to ``from_onnx``
+        makes TVM build ``ShapeExpr`` nodes from strings and crash, so the
+        batch dimension is fixed to 1. Models that need variable non-batch
+        dimensions, such as NeMo-Citrinet's time axis, keep those symbolic
+        strings and ``TVMBuilder`` resolves them to TVM shape variables.
         """
-        return {
-            first_input["name"]: [
-                dimension if isinstance(dimension, int) else 1
-                for dimension in model_shape
-            ]
-        }
+        shape = []
+        for index, dimension in enumerate(model_shape):
+            if isinstance(dimension, int):
+                shape.append(dimension)
+            elif index == 0 or not preserve_dynamic:
+                shape.append(1)
+            else:
+                shape.append(str(dimension) if dimension else f"dynamic_{index}")
+        return {first_input["name"]: shape}
 
     @staticmethod
     def prepare_model_shape(model_obj):

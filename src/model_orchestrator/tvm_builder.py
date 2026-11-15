@@ -41,12 +41,47 @@ class TVMBuilder:
             names.append(name)
         return names
 
+    @staticmethod
+    def _resolve_shape_dict(shape_dict):
+        """Turn serializable symbolic dimensions into TVM shape variables."""
+        if not shape_dict:
+            return shape_dict
+
+        import tvm
+
+        tir = getattr(tvm, "tirx", None) or getattr(tvm, "tir")
+        resolved = {}
+        for name, shape in shape_dict.items():
+            dimensions = []
+            for index, dimension in enumerate(shape):
+                if isinstance(dimension, str):
+                    dimensions.append(
+                        tir.Var(dimension or f"dynamic_{index}", "int64")
+                    )
+                else:
+                    dimensions.append(dimension)
+            resolved[name] = dimensions
+        return resolved
+
+    @staticmethod
+    def _cache_shape_dict(shape_dict):
+        """Return a JSON-serializable representation of a shape dict."""
+        if not shape_dict:
+            return {}
+        return {
+            name: [
+                dimension if isinstance(dimension, int) else str(dimension)
+                for dimension in shape
+            ]
+            for name, shape in shape_dict.items()
+        }
+
     def build_relax(self, onnx_model, shape_dict=None, dtype_dict=None):
         from tvm.relax.frontend.onnx import from_onnx
 
         return from_onnx(
             onnx_model,
-            shape_dict=shape_dict,
+            shape_dict=self._resolve_shape_dict(shape_dict),
             dtype_dict=dtype_dict,
         )
 
@@ -89,7 +124,7 @@ class TVMBuilder:
         cache_identity = {
             "source_key": source_key,
             "model_hash": model_hash,
-            "shape_dict": shape_dict or {},
+            "shape_dict": self._cache_shape_dict(shape_dict),
             "target": self.TARGET,
             "tvm_version": getattr(tvm, "__version__", "unknown"),
             "machine": platform.machine(),
