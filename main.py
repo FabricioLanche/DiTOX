@@ -308,13 +308,15 @@ def _process_model_batch(
     images_paths = batch_state["images_paths"]
     task_samples = batch_state.get("task_samples")
     text_prompts = None
+    text_samples = None
     if "text" in tags:
-        if batch_state.get("text_prompts") is None:
+        if batch_state.get("text_samples") is None:
             with pipeline_trace.stage("text_inputs.load"):
-                batch_state["text_prompts"] = text_input_provider.load()
-        text_prompts = batch_state["text_prompts"][
+                batch_state["text_samples"] = text_input_provider.load_samples()
+        text_samples = batch_state["text_samples"][
             batch_state["starts_from"] : batch_state["ends_at"]
         ]
+        text_prompts = [sample["prompt"] for sample in text_samples]
 
     if not optimizer_config.get("enabled", True):
         passes = []
@@ -394,6 +396,7 @@ def _process_model_batch(
                 tvm_build_error=tvm_build_error,
                 prepared_image_inputs=prepared_image_inputs,
                 text_prompts=text_prompts,
+                text_samples=text_samples,
                 prepared_task_inputs=prepared_task_inputs,
                 task_samples=task_samples,
             )
@@ -461,6 +464,7 @@ def _process_model_batch(
                         relax_input_names=relax_input_names,
                         prepared_image_inputs=prepared_image_inputs,
                         text_prompts=text_prompts,
+                        text_samples=text_samples,
                         prepared_task_inputs=prepared_task_inputs,
                         task_samples=task_samples,
                     )
@@ -639,7 +643,7 @@ def main():
                 "task_samples": task_samples,
                 "starts_from": starts_from,
                 "ends_at": ends_at,
-                "text_prompts": None,
+                "text_samples": None,
                 "report_path": report_path,
                 "problematic_report_path": problematic_report_path,
                 "problematic_models": None,

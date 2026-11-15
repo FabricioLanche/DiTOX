@@ -59,6 +59,7 @@ class BackendDispatcher:
         tvm_build_error=None,
         prepared_image_inputs=None,
         text_prompts=None,
+        text_samples=None,
         prepared_task_inputs=None,
         task_samples=None,
     ):
@@ -86,7 +87,12 @@ class BackendDispatcher:
             )
 
         if "text" in tags:
-            return self.text_runner.execute_text_model(model, text_prompts or [])
+            return self.text_runner.execute_text_model(
+                model,
+                text_prompts or [],
+                config=model_config,
+                samples=text_samples,
+            )
 
         if self.is_tvm:
             if tvm_build_error is not None:
@@ -128,6 +134,7 @@ class BackendDispatcher:
         relax_input_names=None,
         prepared_image_inputs=None,
         text_prompts=None,
+        text_samples=None,
         prepared_task_inputs=None,
         task_samples=None,
     ):
@@ -385,7 +392,10 @@ class BackendDispatcher:
                                 )
                         elif "text" in tags:
                             opt_model_out = self.text_runner.execute_text_model(
-                                onnx_model, text_prompts or []
+                                onnx_model,
+                                text_prompts or [],
+                                config=model_config,
+                                samples=text_samples,
                             )
                         else:
                             opt_model_out = self.onnx_runner.execute_onnx_model(onnx_model, images_paths, config=model_config, include_certainties=include_certainties)

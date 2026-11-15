@@ -157,16 +157,22 @@ class TextInputProvider(DatasetInputProvider):
     def __init__(self, config=None):
         super().__init__(config)
         self.template = self.config.get("prompt_template", self.DEFAULT_TEMPLATE)
-        self._prompts = None
+        self._samples = None
+
+    def load_samples(self):
+        """Return dataset rows plus the formatted prompt for each sample."""
+        if self._samples is not None:
+            return self._samples
+        samples = []
+        for row in self.load_rows():
+            sample = dict(row)
+            try:
+                sample["prompt"] = self.template.format(**sample)
+            except (KeyError, IndexError):
+                sample["prompt"] = str(row)
+            samples.append(sample)
+        self._samples = samples
+        return self._samples
 
     def load(self):
-        if self._prompts is not None:
-            return self._prompts
-        prompts = []
-        for row in self.load_rows():
-            try:
-                prompts.append(self.template.format(**row))
-            except (KeyError, IndexError):
-                prompts.append(str(row))
-        self._prompts = prompts
-        return self._prompts
+        return [sample["prompt"] for sample in self.load_samples()]
