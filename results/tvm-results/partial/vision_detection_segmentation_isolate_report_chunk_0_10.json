@@ -1,0 +1,270 @@
+{
+  "no_dissimilar": 0,
+  "base_models_run": 1,
+  "model_instances_run": 1,
+  "failed_conversions_no": 0,
+  "skipped_models": [],
+  "failed_models": [
+    "FCN ResNet-50-11",
+    "FCN ResNet-101-11",
+    "FCN ResNet-50-int8-12",
+    "FCN ResNet-50-12",
+    "FCN ResNet-50-qdq-12",
+    "Faster R-CNN R-50-FPN-10",
+    "Faster R-CNN R-50-FPN-fp32-12",
+    "Faster R-CNN R-50-FPN-int8-12",
+    "Faster R-CNN R-50-FPN-qdq-12",
+    "Mask R-CNN R-50-FPN-10",
+    "Mask R-CNN R-50-FPN-int8-12",
+    "Mask R-CNN R-50-FPN-fp32-12",
+    "Mask R-CNN R-50-FPN-qdq-12",
+    "RetinaNet (ResNet101 backbone)-9",
+    "SSD-12",
+    "SSD-MobilenetV1-10",
+    "SSD-MobilenetV1-12-12",
+    "SSD-MobilenetV1-12-int8-12",
+    "SSD-MobilenetV1-12-qdq-13",
+    "SSD-int8-12",
+    "SSD-qdq-12",
+    "Tiny YOLOv3-11",
+    "YOLOv3-10",
+    "YOLOv3-12-12",
+    "YOLOv3-12-int8-12",
+    "YOLOv4-11",
+    "SSD-10"
+  ],
+  "conversion_errors": {
+    "FCN ResNet-50-11": {
+      "baseline": "AssertionError('Only one of scales and sizes can be provided in Resize.')"
+    },
+    "FCN ResNet-101-11": {
+      "baseline": "AssertionError('Only one of scales and sizes can be provided in Resize.')"
+    },
+    "FCN ResNet-50-int8-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: QLinearAdd, QLinearConv')"
+    },
+    "FCN ResNet-50-12": {
+      "baseline": "AssertionError('Only one of scales and sizes can be provided in Resize.')"
+    },
+    "FCN ResNet-50-qdq-12": {
+      "baseline": "AssertionError('Only one of scales and sizes can be provided in Resize.')"
+    },
+    "Faster R-CNN R-50-FPN-10": {
+      "baseline": "InternalError('The input padding length is expected to be either 1, 3 or 6. However, the given padding is (3, 3, 3, 3)')"
+    },
+    "Faster R-CNN R-50-FPN-fp32-12": {
+      "baseline": "InternalError('The input padding length is expected to be either 1, 3 or 6. However, the given padding is (3, 3, 3, 3)')"
+    },
+    "Faster R-CNN R-50-FPN-int8-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: QLinearSigmoid, QLinearAdd, QLinearMatMul, QLinearConv')"
+    },
+    "Faster R-CNN R-50-FPN-qdq-12": {
+      "baseline": "InternalError('The input padding length is expected to be either 1, 3 or 6. However, the given padding is (3, 3, 3, 3)')"
+    },
+    "Mask R-CNN R-50-FPN-10": {
+      "baseline": "InternalError('The input padding length is expected to be either 1, 3 or 6. However, the given padding is (3, 3, 3, 3)')"
+    },
+    "Mask R-CNN R-50-FPN-int8-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: QLinearConv, QLinearSigmoid, QLinearMatMul, QLinearConcat, QLinearAdd')"
+    },
+    "Mask R-CNN R-50-FPN-fp32-12": {
+      "baseline": "InternalError('The input padding length is expected to be either 1, 3 or 6. However, the given padding is (3, 3, 3, 3)')"
+    },
+    "Mask R-CNN R-50-FPN-qdq-12": {
+      "baseline": "InternalError('The input padding length is expected to be either 1, 3 or 6. However, the given padding is (3, 3, 3, 3)')"
+    },
+    "RetinaNet (ResNet101 backbone)-9": {
+      "baseline": "TypeError(\"object of type 'NoneType' has no len()\")"
+    },
+    "SSD-12": {
+      "baseline": "ValueError('TopK k must be a constant')"
+    },
+    "SSD-MobilenetV1-10": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: Loop')"
+    },
+    "SSD-MobilenetV1-12-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: Loop')"
+    },
+    "SSD-MobilenetV1-12-int8-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: Loop, QLinearConv')"
+    },
+    "SSD-MobilenetV1-12-qdq-13": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: Loop')"
+    },
+    "SSD-int8-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: QLinearAdd, QLinearConv')"
+    },
+    "SSD-qdq-12": {
+      "baseline": "ValueError('TopK k must be a constant')"
+    },
+    "Tiny YOLOv3-11": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: Loop')"
+    },
+    "YOLOv3-10": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: Loop')"
+    },
+    "YOLOv3-12-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: Loop')"
+    },
+    "YOLOv3-12-int8-12": {
+      "baseline": "OpNotImplemented('The following operators are not supported for frontend ONNX: QLinearConv, QLinearLeakyRelu, QLinearAdd, QLinearConcat, Loop')"
+    },
+    "YOLOv4-11": {
+      "baseline": "AssertionError('Only one of scales and sizes can be provided in Resize.')"
+    },
+    "SSD-10": {
+      "baseline": "ValueError('Invalid data_buf.shape[0] on argument #0 when calling:\\n  `topk(data_buf: Tensor([T.int64(1210400)], float32), value_buf: Tensor([T.int64(1)], float32), indices_buf: Tensor([T.int64(1)], int64))`,\\n  expected 1210400')"
+    }
+  },
+  "manifest_models_expected": 130,
+  "manifest_models_not_found": [],
+  "manifest_models_excluded_by_config": [
+    "AlexNet-7",
+    "AlexNet-8",
+    "AlexNet-9",
+    "AlexNet-12",
+    "AlexNet-int8-12",
+    "AlexNet-qdq-12",
+    "CaffeNet-7",
+    "CaffeNet-8",
+    "CaffeNet-9",
+    "CaffeNet-12",
+    "CaffeNet-int8-12",
+    "CaffeNet-qdq-12",
+    "DenseNet-121-7",
+    "DenseNet-121-8",
+    "DenseNet-121-9",
+    "DenseNet-121-12-12",
+    "DenseNet-121-12-int8-12",
+    "EfficientNet-Lite4-11",
+    "EfficientNet-Lite4-int8-11",
+    "EfficientNet-Lite4-qdq-11",
+    "GoogleNet-7",
+    "GoogleNet-8",
+    "GoogleNet-9",
+    "GoogleNet-12",
+    "GoogleNet-int8-12",
+    "GoogleNet-qdq-12",
+    "Inception-1-7",
+    "Inception-1-8",
+    "Inception-1-9",
+    "Inception-1-12",
+    "Inception-1-int8-12",
+    "Inception-1-qdq-12",
+    "Inception-2-7",
+    "Inception-2-8",
+    "Inception-2-9",
+    "MNIST-7",
+    "MNIST-8",
+    "MNIST-12-12",
+    "MNIST-12-int8-12",
+    "MobileNet v2-1.0-10",
+    "MobileNet v2-1.0-fp32-12",
+    "MobileNet v2-1.0-int8-12",
+    "MobileNet v2-1.0-qdq-12",
+    "MobileNet v2-7-7",
+    "R-CNN ILSVRC13-7",
+    "R-CNN ILSVRC13-8",
+    "R-CNN ILSVRC13-9",
+    "ResNet101-7",
+    "ResNet101-v2-7",
+    "ResNet152-7",
+    "ResNet152-v2-7",
+    "ResNet18-7",
+    "ResNet18-v2-7",
+    "ResNet34-7",
+    "ResNet34-v2-7",
+    "ResNet50-7",
+    "ResNet50-caffe2-7",
+    "ResNet50-caffe2-8",
+    "ResNet50-caffe2-9",
+    "ResNet50-fp32-12",
+    "ResNet50-int8-12",
+    "ResNet50-qdq-12",
+    "ResNet50-v2-7",
+    "ShuffleNet-v1-7",
+    "ShuffleNet-v1-8",
+    "ShuffleNet-v1-9",
+    "ShuffleNet-v2-10",
+    "ShuffleNet-v2-fp32-12",
+    "ShuffleNet-v2-int8-12",
+    "ShuffleNet-v2-qdq-12",
+    "SqueezeNet 1.0-7",
+    "SqueezeNet 1.0-8",
+    "SqueezeNet 1.0-9",
+    "SqueezeNet 1.0-12",
+    "SqueezeNet 1.0-int8-12",
+    "SqueezeNet 1.0-qdq-13",
+    "SqueezeNet 1.1-7",
+    "VGG 16-7",
+    "VGG 16-bn-7",
+    "VGG 16-fp32-12",
+    "VGG 16-int8-12",
+    "VGG 16-qdq-12",
+    "VGG 19-7",
+    "VGG 19-bn-7",
+    "VGG 19-caffe2-7",
+    "VGG 19-caffe2-8",
+    "VGG 19-caffe2-9",
+    "ZFNet-512-7",
+    "ZFNet-512-8",
+    "ZFNet-512-9",
+    "ZFNet-512-12",
+    "ZFNet-512-int8-12",
+    "ZFNet-512-qdq-12",
+    "BERT-Squad-8",
+    "BERT-Squad-10",
+    "BERT-Squad-12",
+    "BERT-Squad-int8-12",
+    "GPT-2-LM-HEAD-10",
+    "RoBERTa-SequenceClassification-9",
+    "T5-encoder-12"
+  ],
+  "manifest_models_selected_by_config": 30,
+  "YOLOv2-9": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 1,
+    "all": {
+      "output_change": {
+        "changed_samples": 10,
+        "total_samples": 10,
+        "change_rate": 100.0
+      },
+      "family_metrics": {
+        "detection": {
+          "tensor_rank": {},
+          "boxes": {
+            "218": {
+              "metrics_0_5": {
+                "avg_f1": 99.99999994126983,
+                "avg_prec": 99.99999994126983,
+                "avg_recall": 99.99999994126983,
+                "avg_mAP": 99.99999988253967,
+                "avg_IoU": 85.3858810367307
+              },
+              "metrics_0_7": {
+                "avg_f1": 99.99999994126983,
+                "avg_prec": 99.99999994126983,
+                "avg_recall": 99.99999994126983,
+                "avg_mAP": 99.99999988253967,
+                "avg_IoU": 85.3858810367307
+              },
+              "metrics_0_9": {
+                "avg_f1": 99.99999994126983,
+                "avg_prec": 99.99999994126983,
+                "avg_recall": 99.99999994126983,
+                "avg_mAP": 99.99999988253967,
+                "avg_IoU": 85.3858810367307
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
