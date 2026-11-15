@@ -83,6 +83,12 @@ class CheckpointManager:
                 "tags_of_models_to_consider",
             ):
                 hub_config.pop(key, None)
+        runtime_config = execution_config.get("runtime")
+        if isinstance(runtime_config, dict):
+            tvm_runtime = runtime_config.get("tvm")
+            if isinstance(tvm_runtime, dict):
+                for key in ("model_workers", "threads_per_worker"):
+                    tvm_runtime.pop(key, None)
 
         image_inputs = []
         for image_path in image_paths:
