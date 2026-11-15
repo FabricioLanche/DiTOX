@@ -1,15 +1,13 @@
 {
   "no_dissimilar": 0,
-  "base_models_run": 3,
+  "base_models_run": 4,
   "model_instances_run": 3,
-  "failed_conversions_no": 0,
+  "failed_conversions_no": 1,
   "skipped_models": [],
-  "failed_models": [
-    "NeMo-Citrinet-512-16"
-  ],
+  "failed_models": [],
   "conversion_errors": {
     "NeMo-Citrinet-512-16": {
-      "baseline": "ValueError(\"invalid literal for int() with base 10: '<unk>'\")"
+      "all": "b'Traceback (most recent call last):\\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\\n  File \"<frozen runpy>\", line 88, in _run_code\\n  File \"/home/fabricio/venvs/ditox/lib/python3.12/site-packages/onnxoptimizer/__main__.py\", line 15, in <module>\\n    main()\\n  File \"/home/fabricio/venvs/ditox/lib/python3.12/site-packages/onnxoptimizer/onnxoptimizer_main.py\", line 75, in main\\n    onnx.checker.check_model(input_file)\\n  File \"/home/fabricio/venvs/ditox/lib/python3.12/site-packages/onnx/checker.py\", line 163, in check_model\\n    C.check_model_path(\\nonnx.onnx_cpp2py_export.checker.ValidationError: Your model has duplicate keys in metadata_props.\\n'"
     }
   },
   "manifest_models_expected": 0,
@@ -90,5 +88,14 @@
         }
       }
     }
+  },
+  "NeMo-Citrinet-512-16": {
+    "skipped": [],
+    "failed": [],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 0,
+    "run": 0
   }
 }

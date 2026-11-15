@@ -1,13 +1,12 @@
 {
-  "no_dissimilar": 0,
-  "base_models_run": 0,
-  "model_instances_run": 0,
-  "failed_conversions_no": 0,
+  "no_dissimilar": 1,
+  "base_models_run": 1,
+  "model_instances_run": 24,
+  "failed_conversions_no": 4,
   "skipped_models": [],
   "failed_models": [
     "Whisper-Base-Encoder-14",
     "Wav2Vec2-Base-960h-14",
-    "NeMo-Citrinet-512-16",
     "Whisper-Tiny-Encoder-14"
   ],
   "conversion_errors": {
@@ -17,15 +16,410 @@
     "Wav2Vec2-Base-960h-14": {
       "baseline": "ValueError('In ir.Op(span=None, ty=ir.Type(span=None), name=\"relax.add\", description=\"\", arguments=(ir.ArgumentInfo(name=\"x1\", type_info=\"Tensor\", description=\"The first input tensor.\"), ir.ArgumentInfo(name=\"x2\", type_info=\"Tensor\", description=\"The second input tensor.\")), attrs_type_key=\"\", num_inputs=2, support_level=10), the first input shape at dim 1 is T.int64(-1) and the second input shape at dim 1 is T.int64(0), which are not broadcastable.')"
     },
-    "NeMo-Citrinet-512-16": {
-      "baseline": "RuntimeError('Check failed: input_shape[i] == reg (352 vs. 1) : ErrorContext(fn=main, loc=param[0], param=audio_signal, annotation=R.Tensor((1, 80, 1), dtype=\"float32\"))  match_cast error,  shape[2] mismatch to specified constant.')"
-    },
     "Whisper-Tiny-Encoder-14": {
       "baseline": "RuntimeError('Whisper encoder-decoder models currently require the ORT backend; the TVM path in this project compiles a single ONNX graph.')"
+    },
+    "NeMo-Citrinet-512-16": {
+      "SpecializePrimFuncBasedOnCallSite": "TypeError('Check failed: (maybe_var) is false: The signature of target buffer exprected an independent Var, but got (audio_signal_dynamic_axes_2 - T.int64(1)) // T.int64(2) + T.int64(1).')"
     }
   },
   "manifest_models_expected": 0,
   "manifest_models_not_found": [],
   "manifest_models_excluded_by_config": [],
-  "manifest_models_selected_by_config": 0
+  "manifest_models_selected_by_config": 0,
+  "NeMo-Citrinet-512-16": {
+    "skipped": [],
+    "failed": [
+      "SpecializePrimFuncBasedOnCallSite"
+    ],
+    "blocked": [],
+    "dependency_checks": {},
+    "dependency_failures": {},
+    "different": 1,
+    "run": 24,
+    "ToMixedPrecision": {
+      "output_change": {
+        "changed_samples": 3,
+        "total_samples": 5,
+        "change_rate": 60.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.03355704697986577,
+          "cer": 0.009649809452027012,
+          "substitutions": 4,
+          "insertions": 1,
+          "deletions": 0
+        }
+      }
+    },
+    "AdjustMatmulOrder": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "CanonicalizeBindings": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "FoldBatchnormToConv2D": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "FastMathTransform": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "EliminateCommonSubexpr": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "FuseTransposeMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "InlinePrivateFunctions": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "CombineParallelMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "ReorderPermuteDimsAfterConcat": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "ReorderTakeAfterMatmul": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "RemoveRedundantReshape": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "DataflowUseInplaceCalls": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "FoldConstant": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "FuseOps": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "FuseTIR": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "RewriteDataflowReshape": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "TopologicalSort": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "RemoveUnusedOutputs": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "RemoveUnusedParameters": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "DeadCodeElimination": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "LazyTransformParams": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "StaticPlanBlockMemory": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    },
+    "KillAfterLastUse": {
+      "output_change": {
+        "changed_samples": 0,
+        "total_samples": 5,
+        "change_rate": 0.0
+      },
+      "family_metrics": {
+        "transcription_diff": {
+          "wer": 0.0,
+          "cer": 0.0,
+          "substitutions": 0,
+          "insertions": 0,
+          "deletions": 0
+        }
+      }
+    }
+  }
 }
