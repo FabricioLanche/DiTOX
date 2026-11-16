@@ -389,7 +389,10 @@ class ModelOrchestrator:
                 keyword in model_name_lower
                 for keyword in self.PREPROCESSING_KEYWORDS
             )
-            preserve_dynamic_shape = "citrinet" in model_name_lower
+            preserve_dynamic_shape = any(
+                keyword in model_name_lower
+                for keyword in ("citrinet", "wav2vec2")
+            )
             model_config = {
                 "model_name": model_name + "_torch" if not has_known_preprocessor else "",
                 "input_name": first_input["name"],

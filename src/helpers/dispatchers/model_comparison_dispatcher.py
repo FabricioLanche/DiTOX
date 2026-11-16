@@ -35,6 +35,8 @@ class ModelComparisonDispatcher:
         model,
         text_runner=None,
     ):
+        different_before_pass = model_comparisons[model_name_opset]["different"]
+
         if "speech_recognition" in tags or "speech" in tags:
             paired_ids = [key for key in base_model_out if key in opt_model_out]
             if not paired_ids:
@@ -312,12 +314,15 @@ class ModelComparisonDispatcher:
             for values in dissimilar:
                 if isinstance(values, (list, tuple, set)):
                     changed_ids.update(values)
+                else:
+                    changed_ids.add(values)
             total = len(base_model_out)
+            changed_samples = len(changed_ids)
             model_comparisons[model_name_opset][current_pass] = {
                 "output_change": {
-                    "changed_samples": len(changed_ids),
+                    "changed_samples": changed_samples,
                     "total_samples": total,
-                    "change_rate": 100.0 * len(changed_ids) / total if total else 0.0,
+                    "change_rate": 100.0 * changed_samples / total if total else 0.0,
                 },
                 "family_metrics": {"detection": {
                     "tensor_rank": tensor_rank,
@@ -344,6 +349,30 @@ class ModelComparisonDispatcher:
             # TODO: Extend to work for every model.
             comparator = SSDComparator(evaluation, model_comparisons)
             comparator.update(model_name_opset, current_pass, include_certainties=include_certainties, array_index=1)
+
+            dissimilar = evaluation.get("dissimilar", [])
+            changed_ids = set()
+            for values in dissimilar:
+                if isinstance(values, (list, tuple, set)):
+                    changed_ids.update(values)
+                else:
+                    changed_ids.add(values)
+            total = len(base_model_out)
+            changed_samples = len(changed_ids)
+            model_comparisons[model_name_opset][current_pass]["output_change"] = {
+                "changed_samples": changed_samples,
+                "total_samples": total,
+                "change_rate": 100.0 * changed_samples / total if total else 0.0,
+            }
+
+        output_change = model_comparisons[model_name_opset][current_pass].get(
+            "output_change"
+        )
+        if output_change is not None:
+            model_comparisons[model_name_opset]["different"] = (
+                different_before_pass
+                + int(output_change.get("changed_samples", 0) > 0)
+            )
 
         model_comparisons["model_instances_run"] += 1
         model_comparisons[model_name_opset]["run"] += 1
